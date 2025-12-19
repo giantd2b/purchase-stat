@@ -21,6 +21,8 @@ const HEADER_MAP: Record<string, keyof ProcurementRecord> = {
 // Google Sheets configuration
 const SHEET_ID = "1ZxUeN8h9SRTncNWnwou8RonoRFnTOB_xVA5QFfI4lZ4";
 const RANGE = "Sheet1"; // Full sheet
+const APPEND_RANGE = "Sheet1!A:J"; // Range for appending new rows
+const ITEMS_SHEET_RANGE = "items"; // Items inventory sheet
 
 /**
  * Authenticate with Google Sheets API using Service Account
@@ -40,7 +42,7 @@ async function getAuthClient() {
       client_email: clientEmail,
       private_key: privateKey,
     },
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
 
   return auth;
@@ -359,4 +361,106 @@ export function aggregateByMonth(data: ProcurementRecord[]): MonthlySpend[] {
       count,
     }))
     .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  unit: string | null;
+  type: string | null;
+  category: string | null;
+  supplier1: string | null;
+  supplier2: string | null;
+}
+
+/**
+ * Fetch items from the items inventory sheet
+ * Column order: [id, name, unit, (empty), type, category, (empty), supplier1, supplier2]
+ */
+export async function fetchItemsFromSheet(): Promise<InventoryItem[]> {
+  try {
+    const auth = await getAuthClient();
+    const sheets = google.sheets({ version: "v4", auth });
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: ITEMS_SHEET_RANGE,
+    });
+
+    const rows = response.data.values;
+
+    if (!rows || rows.length === 0) {
+      console.log("No data found in items sheet");
+      return [];
+    }
+
+    console.log(`Fetched ${rows.length} rows from items sheet`);
+
+    // Skip header row and parse data
+    const items: InventoryItem[] = rows.slice(1).map((row) => ({
+      id: row[0] || "",
+      name: row[1] || "",
+      unit: row[2] || null,
+      type: row[4] || null,
+      category: row[5] || null,
+      supplier1: row[7] || null,
+      supplier2: row[8] || null,
+    })).filter(item => item.id && item.name); // Filter out empty rows
+
+    return items;
+  } catch (error) {
+    console.error("Error fetching items from Google Sheets:", error);
+    throw error;
+  }
+}
+
+/**
+ * Append a new purchase row to Google Sheets
+ * Column order: [Date, Reference, Vendor, Item, Qty, Unit, Unit Price, Total Price, Department, Payment]
+ */
+export async function appendPurchaseToSheet(data: {
+  date: string;
+  reference?: string;
+  vendor: string;
+  item: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  department: string;
+  payment: string;
+}): Promise<void> {
+  try {
+    const auth = await getAuthClient();
+    const sheets = google.sheets({ version: "v4", auth });
+
+    const totalPrice = data.quantity * data.unitPrice;
+
+    // Map data to the correct column order
+    const row = [
+      data.date,
+      data.reference || "", // Reference (can be empty)
+      data.vendor,
+      data.item,
+      data.quantity,
+      data.unit,
+      data.unitPrice,
+      totalPrice,
+      data.department,
+      data.payment,
+    ];
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: APPEND_RANGE,
+      valueInputOption: "USER_ENTERED",
+      requestBody: {
+        values: [row],
+      },
+    });
+
+    console.log("Successfully appended purchase to Google Sheet");
+  } catch (error) {
+    console.error("Error appending to Google Sheets:", error);
+    throw error;
+  }
 }

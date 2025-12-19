@@ -64,6 +64,24 @@ model ProcurementTransaction {
   @@unique([rowNumber]) // Each row from sheet is unique
 }
 
+// Inventory items from the items sheet
+model Item {
+  id          String   @id // Item code (e.g., T01001)
+  name        String   // Item name
+  unit        String?  // Unit (e.g., kg, pack)
+  type        String?  // Type (e.g., vegetables, meat)
+  category    String?  // Category code
+  supplier1   String?  // Primary supplier
+  supplier2   String?  // Secondary supplier
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([category])
+  @@index([type])
+}
+
 // Sync log to track synchronization history
 model SyncLog {
   id            Int      @id @default(autoincrement())

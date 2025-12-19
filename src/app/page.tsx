@@ -9,6 +9,8 @@ import {
 } from "@/lib/db";
 import Dashboard from "@/components/Dashboard";
 import SyncButton from "@/components/SyncButton";
+import SyncItemsButton from "@/components/SyncItemsButton";
+import { PurchaseForm } from "@/components/PurchaseForm";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, AlertCircle, Database } from "lucide-react";
 import { revalidatePath } from "next/cache";
@@ -123,6 +125,8 @@ export default async function HomePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <PurchaseForm />
+              <SyncItemsButton />
               <SyncButton />
               <form action={refreshData}>
                 <Button variant="outline" size="sm" type="submit">
