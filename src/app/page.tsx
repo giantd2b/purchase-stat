@@ -142,7 +142,7 @@ export default async function HomePage() {
           departmentData={departmentData!}
           vendorData={vendorData!}
           monthlyData={monthlyData!}
-          recentTransactions={recentTransactions!.map((tx) => ({
+          recentTransactions={recentTransactions!.map((tx: { date: string; vendor: string; productName: string; totalPrice: number; minorGroup: string }) => ({
             date: tx.date,
             vendor: tx.vendor,
             item: tx.productName,
