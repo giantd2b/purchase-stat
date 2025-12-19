@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Main procurement transaction table
+model ProcurementTransaction {
+  id              Int      @id @default(autoincrement())
+  rowNumber       Int      // Original row number from Google Sheets
+
+  // Core fields
+  date            DateTime?
+  reference       String?   // อ้างอิง
+  status          String?   // สถานะ
+  contactCode     String?   // รหัสผู้ติดต่อ
+  vendor          String?   // ผู้ขาย/ผู้ให้บริการ
+  itemNumber      Int?      // รายการที่
+  productCode     String?   // รหัสสินค้า/บริการ
+  productName     String?   // ชื่อสินค้า/บริการ
+  accountChart    String?   // ผังบัญชี
+  description     String?   // คำอธิบาย
+
+  // Numeric fields
+  quantity        Decimal?  @db.Decimal(18, 4)
+  unit            String?   // หน่วย
+  price           Decimal?  @db.Decimal(18, 2)
+  discount        Decimal?  @db.Decimal(18, 2)
+  totalPrice      Decimal?  @db.Decimal(18, 2) // มูลค่าก่อนภาษี
+
+  // Tax fields
+  taxType         String?   // ประเภทภาษี
+  vatAmount       Decimal?  @db.Decimal(18, 2) // ยอด VAT
+  withholdingTax  Decimal?  @db.Decimal(18, 2) // หัก ณ ที่จ่าย
+
+  // Category fields
+  majorGroup      String?   // กลุ่มใหญ่
+  minorGroup      String?   // กลุ่มย่อย (department)
+  percentage      Decimal?  @db.Decimal(5, 2)
+
+  // Additional fields
+  payment         String?
+  poNumber        String?   // เลข-PO
+  url             String?
+
+  // Hash for change detection
+  rowHash         String?   // MD5 hash of row data for change detection
+
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Indexes for common queries
+  @@index([date])
+  @@index([vendor])
+  @@index([minorGroup])
+  @@index([reference])
+  @@index([rowNumber])
+  @@unique([rowNumber]) // Each row from sheet is unique
+}
+
+// Sync log to track synchronization history
+model SyncLog {
+  id            Int      @id @default(autoincrement())
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  status        String   // pending, running, completed, failed
+  totalRows     Int?
+  insertedRows  Int?
+  updatedRows   Int?
+  deletedRows   Int?
+  errorMessage  String?
+
+  @@index([startedAt])
+  @@index([status])
+}
