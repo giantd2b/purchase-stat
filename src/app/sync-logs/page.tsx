@@ -177,7 +177,7 @@ export default async function SyncLogsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    logs.map((log) => (
+                    logs.map((log: SyncLog) => (
                       <TableRow key={log.id}>
                         <TableCell className="font-mono text-gray-500">{log.id}</TableCell>
                         <TableCell>
