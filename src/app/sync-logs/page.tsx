@@ -187,6 +187,7 @@ export default async function SyncLogsPage() {
                           {new Intl.DateTimeFormat("th-TH", {
                             dateStyle: "short",
                             timeStyle: "medium",
+                            timeZone: "Asia/Bangkok",
                           }).format(log.startedAt)}
                         </TableCell>
                         <TableCell>{formatDuration(log.startedAt, log.completedAt)}</TableCell>
