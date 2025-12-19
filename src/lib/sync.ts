@@ -5,11 +5,8 @@ import { Pool } from "pg";
 import crypto from "crypto";
 
 const pool = new Pool({
-  host: "localhost",
-  port: 5432,
-  database: "procurement_dashboard",
-  user: "procurement",
-  password: "procurement123",
+  connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
 });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });

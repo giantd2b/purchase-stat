@@ -10,11 +10,8 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const pool = globalForPrisma.pool ?? new Pool({
-    host: "localhost",
-    port: 5432,
-    database: "procurement_dashboard",
-    user: "procurement",
-    password: "procurement123",
+    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
   });
   if (process.env.NODE_ENV !== "production") {
     globalForPrisma.pool = pool;
