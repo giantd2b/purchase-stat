@@ -58,13 +58,14 @@ export default async function SyncLogsPage() {
   });
 
   // Calculate stats
+  type SyncLog = typeof logs[number];
   const stats = {
     total: logs.length,
-    completed: logs.filter((l) => l.status === "completed").length,
-    failed: logs.filter((l) => l.status === "failed").length,
-    totalInserted: logs.reduce((sum, l) => sum + (l.insertedRows || 0), 0),
-    totalUpdated: logs.reduce((sum, l) => sum + (l.updatedRows || 0), 0),
-    totalDeleted: logs.reduce((sum, l) => sum + (l.deletedRows || 0), 0),
+    completed: logs.filter((l: SyncLog) => l.status === "completed").length,
+    failed: logs.filter((l: SyncLog) => l.status === "failed").length,
+    totalInserted: logs.reduce((sum: number, l: SyncLog) => sum + (l.insertedRows || 0), 0),
+    totalUpdated: logs.reduce((sum: number, l: SyncLog) => sum + (l.updatedRows || 0), 0),
+    totalDeleted: logs.reduce((sum: number, l: SyncLog) => sum + (l.deletedRows || 0), 0),
   };
 
   return (
