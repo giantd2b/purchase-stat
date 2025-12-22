@@ -23,6 +23,7 @@ import {
   createReturnAction,
   createTopupAction,
   createAccountAction,
+  transferAction,
 } from "./actions";
 
 interface Account {
@@ -55,11 +56,14 @@ export function PettyCashClient({
 }: Props) {
   const [openTransaction, setOpenTransaction] = useState(false);
   const [openNewAccount, setOpenNewAccount] = useState(false);
+  const [openTransfer, setOpenTransfer] = useState(false);
   const [transactionType, setTransactionType] = useState<
     "WITHDRAW" | "RETURN" | "TOPUP"
   >("WITHDRAW");
   const [selectedAccount, setSelectedAccount] = useState<string>("");
   const [selectedUser, setSelectedUser] = useState<string>("");
+  const [fromAccount, setFromAccount] = useState<string>("");
+  const [toAccount, setToAccount] = useState<string>("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [reference, setReference] = useState("");
@@ -73,6 +77,36 @@ export function PettyCashClient({
     setDescription("");
     setReference("");
     setError(null);
+  };
+
+  const resetTransferForm = () => {
+    setFromAccount("");
+    setToAccount("");
+    setAmount("");
+    setDescription("");
+    setError(null);
+  };
+
+  const handleTransfer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const formData = new FormData();
+    formData.set("fromAccountId", fromAccount);
+    formData.set("toAccountId", toAccount);
+    formData.set("amount", amount);
+    formData.set("description", description);
+
+    startTransition(async () => {
+      const result = await transferAction(formData);
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setOpenTransfer(false);
+        resetTransferForm();
+      }
+    });
   };
 
   const handleSubmitTransaction = async (e: React.FormEvent) => {
@@ -307,6 +341,108 @@ export function PettyCashClient({
                 </Button>
                 <Button type="submit" disabled={isPending || !selectedUser}>
                   {isPending ? "กำลังสร้าง..." : "สร้างบัญชี"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Transfer Button (Admin Only) */}
+      {isAdmin && accounts.length >= 2 && (
+        <Dialog open={openTransfer} onOpenChange={setOpenTransfer}>
+          <DialogTrigger asChild>
+            <Button variant="outline">โอนเงิน</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>โอนเงินระหว่างบัญชี</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleTransfer} className="space-y-4">
+              {/* From Account */}
+              <div className="space-y-2">
+                <Label>จากบัญชี</Label>
+                <Select value={fromAccount} onValueChange={setFromAccount}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกบัญชีต้นทาง" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.user.name || account.user.email} (฿
+                        {account.balance.toLocaleString()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* To Account */}
+              <div className="space-y-2">
+                <Label>ไปยังบัญชี</Label>
+                <Select value={toAccount} onValueChange={setToAccount}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกบัญชีปลายทาง" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts
+                      .filter((a) => a.id !== fromAccount)
+                      .map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.user.name || account.user.email} (฿
+                          {account.balance.toLocaleString()})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Amount */}
+              <div className="space-y-2">
+                <Label>จำนวนเงิน (บาท)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label>รายละเอียด (ไม่บังคับ)</Label>
+                <Input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="เช่น โยกเงินสำรอง..."
+                />
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-sm bg-red-50 p-2 rounded">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setOpenTransfer(false);
+                    resetTransferForm();
+                  }}
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isPending || !fromAccount || !toAccount || fromAccount === toAccount}
+                >
+                  {isPending ? "กำลังโอน..." : "โอนเงิน"}
                 </Button>
               </div>
             </form>

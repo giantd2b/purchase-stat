@@ -468,6 +468,131 @@ export async function getPettyCashKPIs(): Promise<PettyCashKPIs> {
 }
 
 // ============================================
+// Transfer Functions
+// ============================================
+
+export async function transferBetweenAccounts(data: {
+  fromAccountId: string;
+  toAccountId: string;
+  amount: number;
+  description?: string;
+  requestedBy: string;
+}): Promise<{ outTransaction: PettyCashTransactionWithAccount; inTransaction: PettyCashTransactionWithAccount }> {
+  if (data.fromAccountId === data.toAccountId) {
+    throw new Error("Cannot transfer to the same account");
+  }
+
+  if (data.amount <= 0) {
+    throw new Error("Amount must be greater than 0");
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    // Check source account has enough balance
+    const fromAccount = await tx.pettyCashAccount.findUnique({
+      where: { id: data.fromAccountId },
+      include: { user: { select: { name: true, email: true } } },
+    });
+
+    if (!fromAccount) {
+      throw new Error("Source account not found");
+    }
+
+    if (Number(fromAccount.balance) < data.amount) {
+      throw new Error("Insufficient balance");
+    }
+
+    // Get destination account info for description
+    const toAccount = await tx.pettyCashAccount.findUnique({
+      where: { id: data.toAccountId },
+      include: { user: { select: { name: true, email: true } } },
+    });
+
+    if (!toAccount) {
+      throw new Error("Destination account not found");
+    }
+
+    const fromName = fromAccount.user.name || fromAccount.user.email;
+    const toName = toAccount.user.name || toAccount.user.email;
+
+    // Create TRANSFER_OUT transaction (source account)
+    const outTx = await tx.pettyCashTransaction.create({
+      data: {
+        accountId: data.fromAccountId,
+        type: PettyCashType.TRANSFER_OUT,
+        amount: data.amount,
+        description: data.description || `โอนให้ ${toName}`,
+        status: PettyCashStatus.APPROVED,
+        requestedBy: data.requestedBy,
+        approvedBy: data.requestedBy,
+        approvedAt: new Date(),
+      },
+    });
+
+    // Create TRANSFER_IN transaction (destination account)
+    const inTx = await tx.pettyCashTransaction.create({
+      data: {
+        accountId: data.toAccountId,
+        type: PettyCashType.TRANSFER_IN,
+        amount: data.amount,
+        description: data.description || `รับโอนจาก ${fromName}`,
+        status: PettyCashStatus.APPROVED,
+        requestedBy: data.requestedBy,
+        approvedBy: data.requestedBy,
+        approvedAt: new Date(),
+        relatedTransactionId: outTx.id,
+      },
+    });
+
+    // Update the OUT transaction with related ID
+    await tx.pettyCashTransaction.update({
+      where: { id: outTx.id },
+      data: { relatedTransactionId: inTx.id },
+    });
+
+    // Update balances
+    await tx.pettyCashAccount.update({
+      where: { id: data.fromAccountId },
+      data: { balance: { decrement: data.amount } },
+    });
+
+    await tx.pettyCashAccount.update({
+      where: { id: data.toAccountId },
+      data: { balance: { increment: data.amount } },
+    });
+
+    // Fetch complete transactions with account info
+    const outTxFull = await tx.pettyCashTransaction.findUnique({
+      where: { id: outTx.id },
+      include: {
+        account: {
+          include: {
+            user: { select: { id: true, name: true, email: true, image: true } },
+          },
+        },
+      },
+    });
+
+    const inTxFull = await tx.pettyCashTransaction.findUnique({
+      where: { id: inTx.id },
+      include: {
+        account: {
+          include: {
+            user: { select: { id: true, name: true, email: true, image: true } },
+          },
+        },
+      },
+    });
+
+    return { outTxFull, inTxFull };
+  });
+
+  return {
+    outTransaction: { ...result.outTxFull!, amount: Number(result.outTxFull!.amount) },
+    inTransaction: { ...result.inTxFull!, amount: Number(result.inTxFull!.amount) },
+  };
+}
+
+// ============================================
 // User Lookup Functions
 // ============================================
 

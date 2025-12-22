@@ -8,6 +8,7 @@ import {
   rejectTransaction,
   getOrCreatePettyCashAccount,
   createPettyCashAccount,
+  transferBetweenAccounts,
 } from "@/lib/petty-cash-db";
 import { PettyCashType } from "@prisma/client";
 
@@ -158,5 +159,42 @@ export async function createAccountAction(userId: string, initialBalance: number
   } catch (error) {
     console.error("Failed to create account:", error);
     return { error: "Failed to create account" };
+  }
+}
+
+export async function transferAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id || session.user.role !== "ADMIN") {
+    return { error: "Unauthorized - Admin only" };
+  }
+
+  const fromAccountId = formData.get("fromAccountId") as string;
+  const toAccountId = formData.get("toAccountId") as string;
+  const amount = parseFloat(formData.get("amount") as string);
+  const description = formData.get("description") as string;
+
+  if (!fromAccountId || !toAccountId || !amount || amount <= 0) {
+    return { error: "Invalid input" };
+  }
+
+  if (fromAccountId === toAccountId) {
+    return { error: "Cannot transfer to the same account" };
+  }
+
+  try {
+    await transferBetweenAccounts({
+      fromAccountId,
+      toAccountId,
+      amount,
+      description: description || undefined,
+      requestedBy: session.user.id,
+    });
+
+    revalidatePath("/petty-cash");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to transfer:", error);
+    const message = error instanceof Error ? error.message : "Failed to transfer";
+    return { error: message };
   }
 }

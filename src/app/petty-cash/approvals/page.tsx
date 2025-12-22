@@ -117,10 +117,12 @@ export default async function ApprovalsPage() {
                       <TableCell>
                         <span
                           className={`px-2 py-1 rounded text-xs font-medium ${
-                            tx.type === "WITHDRAW"
+                            tx.type === "WITHDRAW" || tx.type === "TRANSFER_OUT"
                               ? "bg-red-100 text-red-800"
                               : tx.type === "RETURN"
                               ? "bg-blue-100 text-blue-800"
+                              : tx.type === "TRANSFER_IN"
+                              ? "bg-green-100 text-green-800"
                               : "bg-purple-100 text-purple-800"
                           }`}
                         >
@@ -128,7 +130,11 @@ export default async function ApprovalsPage() {
                             ? "เบิก"
                             : tx.type === "RETURN"
                             ? "คืน"
-                            : "เติม"}
+                            : tx.type === "TOPUP"
+                            ? "เติม"
+                            : tx.type === "TRANSFER_OUT"
+                            ? "โอนออก"
+                            : "รับโอน"}
                         </span>
                       </TableCell>
                       <TableCell className="text-gray-700">

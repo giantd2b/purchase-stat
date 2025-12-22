@@ -173,9 +173,11 @@ model SyncLog {
 // ============================================
 
 enum PettyCashType {
-  WITHDRAW  // เบิกเงิน (ลดยอด)
-  RETURN    // คืนเงินทอน (เพิ่มยอด)
-  TOPUP     // เติมเงินเข้ากองทุน (เพิ่มยอด)
+  WITHDRAW      // เบิกเงิน (ลดยอด)
+  RETURN        // คืนเงินทอน (เพิ่มยอด)
+  TOPUP         // เติมเงินเข้ากองทุน (เพิ่มยอด)
+  TRANSFER_OUT  // โอนออก (ลดยอด)
+  TRANSFER_IN   // รับโอน (เพิ่มยอด)
 }
 
 enum PettyCashStatus {
@@ -212,6 +214,7 @@ model PettyCashTransaction {
   approvedAt  DateTime?
   rejectedAt  DateTime?
   rejectReason String?
+  relatedTransactionId String? // สำหรับ transfer - link ไปยัง transaction อีกฝั่ง
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
