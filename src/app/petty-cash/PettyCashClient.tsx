@@ -73,6 +73,13 @@ export function PettyCashClient({
   const [file, setFile] = useState<File | null>(null);
   const [uploadedFile, setUploadedFile] = useState<{ url: string; name: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<{
+    amount: number | null;
+    description: string | null;
+    reference: string | null;
+    confidence: string;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,8 +117,47 @@ export function PettyCashClient({
   const clearFile = () => {
     setFile(null);
     setUploadedFile(null);
+    setScanResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  const handleScanImage = async () => {
+    if (!uploadedFile?.url) return;
+
+    setIsScanning(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: uploadedFile.url }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Scan failed");
+      }
+
+      setScanResult(result.data);
+
+      // Auto-fill form fields
+      if (result.data.amount) {
+        setAmount(result.data.amount.toString());
+      }
+      if (result.data.description && !description) {
+        setDescription(result.data.description);
+      }
+      if (result.data.reference && !reference) {
+        setReference(result.data.reference);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to scan image");
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -121,6 +167,7 @@ export function PettyCashClient({
     setDescription("");
     setReference("");
     setError(null);
+    setScanResult(null);
     clearFile();
   };
 
@@ -332,9 +379,41 @@ export function PettyCashClient({
                 <p className="text-sm text-blue-500">กำลังอัปโหลด...</p>
               )}
               {uploadedFile && (
-                <p className="text-sm text-green-600">
-                  อัปโหลดสำเร็จ: {uploadedFile.name}
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-green-600">
+                    อัปโหลดสำเร็จ: {uploadedFile.name}
+                  </p>
+                  {/* Scan Button */}
+                  {!uploadedFile.name.toLowerCase().endsWith('.pdf') && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleScanImage}
+                      disabled={isScanning}
+                      className="w-full"
+                    >
+                      {isScanning ? "กำลังสแกน..." : "🔍 สแกนจำนวนเงินจากรูป"}
+                    </Button>
+                  )}
+                </div>
+              )}
+              {scanResult && (
+                <div className="text-sm bg-blue-50 p-2 rounded border border-blue-200">
+                  <p className="font-medium text-blue-800">ผลการสแกน:</p>
+                  {scanResult.amount && (
+                    <p>💰 จำนวนเงิน: ฿{scanResult.amount.toLocaleString()}</p>
+                  )}
+                  {scanResult.description && (
+                    <p>📝 รายละเอียด: {scanResult.description}</p>
+                  )}
+                  {scanResult.reference && (
+                    <p>🔢 เลขที่เอกสาร: {scanResult.reference}</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    ความมั่นใจ: {scanResult.confidence === 'high' ? '🟢 สูง' : scanResult.confidence === 'medium' ? '🟡 ปานกลาง' : '🔴 ต่ำ'}
+                  </p>
+                </div>
               )}
               <p className="text-xs text-gray-500">
                 รองรับ: รูปภาพ (JPG, PNG, GIF) หรือ PDF (ไม่เกิน 10MB)
