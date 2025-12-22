@@ -1,0 +1,318 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  createWithdrawalAction,
+  createReturnAction,
+  createTopupAction,
+  createAccountAction,
+} from "./actions";
+
+interface Account {
+  id: string;
+  userId: string;
+  balance: number;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+}
+
+interface UserWithoutAccount {
+  id: string;
+  name: string | null;
+  email: string;
+}
+
+interface Props {
+  accounts: Account[];
+  usersWithoutAccount: UserWithoutAccount[];
+  isAdmin: boolean;
+}
+
+export function PettyCashClient({
+  accounts,
+  usersWithoutAccount,
+  isAdmin,
+}: Props) {
+  const [openTransaction, setOpenTransaction] = useState(false);
+  const [openNewAccount, setOpenNewAccount] = useState(false);
+  const [transactionType, setTransactionType] = useState<
+    "WITHDRAW" | "RETURN" | "TOPUP"
+  >("WITHDRAW");
+  const [selectedAccount, setSelectedAccount] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState<string>("");
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [reference, setReference] = useState("");
+  const [initialBalance, setInitialBalance] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setSelectedAccount("");
+    setAmount("");
+    setDescription("");
+    setReference("");
+    setError(null);
+  };
+
+  const handleSubmitTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const formData = new FormData();
+    formData.set("accountId", selectedAccount);
+    formData.set("amount", amount);
+    formData.set("description", description);
+    formData.set("reference", reference);
+
+    startTransition(async () => {
+      let result;
+      if (transactionType === "WITHDRAW") {
+        result = await createWithdrawalAction(formData);
+      } else if (transactionType === "RETURN") {
+        result = await createReturnAction(formData);
+      } else {
+        result = await createTopupAction(formData);
+      }
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setOpenTransaction(false);
+        resetForm();
+      }
+    });
+  };
+
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    startTransition(async () => {
+      const result = await createAccountAction(
+        selectedUser,
+        parseFloat(initialBalance) || 0
+      );
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setOpenNewAccount(false);
+        setSelectedUser("");
+        setInitialBalance("");
+      }
+    });
+  };
+
+  return (
+    <div className="flex gap-2">
+      {/* New Transaction Button */}
+      <Dialog open={openTransaction} onOpenChange={setOpenTransaction}>
+        <DialogTrigger asChild>
+          <Button disabled={accounts.length === 0}>+ บันทึกรายการ</Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>บันทึกรายการ Petty Cash</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitTransaction} className="space-y-4">
+            {/* Transaction Type */}
+            <div className="space-y-2">
+              <Label>ประเภทรายการ</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={transactionType === "WITHDRAW" ? "default" : "outline"}
+                  onClick={() => setTransactionType("WITHDRAW")}
+                  className="flex-1"
+                >
+                  เบิก
+                </Button>
+                <Button
+                  type="button"
+                  variant={transactionType === "RETURN" ? "default" : "outline"}
+                  onClick={() => setTransactionType("RETURN")}
+                  className="flex-1"
+                >
+                  คืน
+                </Button>
+                {isAdmin && (
+                  <Button
+                    type="button"
+                    variant={transactionType === "TOPUP" ? "default" : "outline"}
+                    onClick={() => setTransactionType("TOPUP")}
+                    className="flex-1"
+                  >
+                    เติม
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Account Select */}
+            <div className="space-y-2">
+              <Label>บัญชี</Label>
+              <Select value={selectedAccount} onValueChange={setSelectedAccount}>
+                <SelectTrigger>
+                  <SelectValue placeholder="เลือกบัญชี" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.user.name || account.user.email} (฿
+                      {account.balance.toLocaleString()})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Amount */}
+            <div className="space-y-2">
+              <Label>จำนวนเงิน (บาท)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label>รายละเอียด</Label>
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="เช่น ค่าวัตถุดิบ, ค่าขนส่ง..."
+              />
+            </div>
+
+            {/* Reference */}
+            <div className="space-y-2">
+              <Label>เลขที่เอกสาร</Label>
+              <Input
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="เช่น INV-001"
+              />
+            </div>
+
+            {error && (
+              <div className="text-red-500 text-sm bg-red-50 p-2 rounded">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOpenTransaction(false);
+                  resetForm();
+                }}
+              >
+                ยกเลิก
+              </Button>
+              <Button type="submit" disabled={isPending || !selectedAccount}>
+                {isPending ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Account Button (Admin Only) */}
+      {isAdmin && usersWithoutAccount.length > 0 && (
+        <Dialog open={openNewAccount} onOpenChange={setOpenNewAccount}>
+          <DialogTrigger asChild>
+            <Button variant="outline">+ เพิ่มผู้ถือ</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>เพิ่มผู้ถือ Petty Cash</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateAccount} className="space-y-4">
+              {/* User Select */}
+              <div className="space-y-2">
+                <Label>เลือกผู้ใช้</Label>
+                <Select value={selectedUser} onValueChange={setSelectedUser}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="เลือกผู้ใช้" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usersWithoutAccount.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.name || user.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Initial Balance */}
+              <div className="space-y-2">
+                <Label>ยอดเริ่มต้น (บาท)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={initialBalance}
+                  onChange={(e) => setInitialBalance(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+
+              {error && (
+                <div className="text-red-500 text-sm bg-red-50 p-2 rounded">
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setOpenNewAccount(false);
+                    setSelectedUser("");
+                    setInitialBalance("");
+                  }}
+                >
+                  ยกเลิก
+                </Button>
+                <Button type="submit" disabled={isPending || !selectedUser}>
+                  {isPending ? "กำลังสร้าง..." : "สร้างบัญชี"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}

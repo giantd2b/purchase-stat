@@ -14,7 +14,7 @@ import SyncItemsButton from "@/components/SyncItemsButton";
 import { UserNav } from "@/components/UserNav";
 import { DashboardDatePicker } from "@/components/DashboardDatePicker";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertCircle, Database, FileText } from "lucide-react";
+import { RefreshCw, AlertCircle, Database, FileText, Wallet } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 
@@ -159,6 +159,12 @@ export default async function HomePage({ searchParams }: PageProps) {
                     Daily Report
                   </Button>
                 </Link>
+                <Link href="/petty-cash">
+                  <Button variant="outline" size="sm">
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Petty Cash
+                  </Button>
+                </Link>
                 <SyncItemsButton />
                 <SyncButton />
                 <form action={refreshData}>
@@ -204,6 +210,10 @@ export default async function HomePage({ searchParams }: PageProps) {
             {totalRecords.toLocaleString()} total records • Last sync: {lastSyncTime} •{" "}
             <Link href="/daily-report" className="text-blue-500 hover:underline">
               Daily Report
+            </Link>
+            {" • "}
+            <Link href="/petty-cash" className="text-blue-500 hover:underline">
+              Petty Cash
             </Link>
             {" • "}
             <Link href="/sync-logs" className="text-blue-500 hover:underline">
