@@ -1,6 +1,7 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -42,16 +43,25 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // Generate unique filename
     const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(7);
     const extension = file.name.split(".").pop();
-    const filename = `petty-cash/${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
+    const filename = `petty-cash/${timestamp}-${randomStr}.${extension}`;
 
-    // Upload to Vercel Blob
-    const blob = await put(filename, file, {
-      access: "public",
+    // Convert File to ArrayBuffer then to Uint8Array
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    // Upload to Firebase Storage
+    const storageRef = ref(storage, filename);
+    const snapshot = await uploadBytes(storageRef, uint8Array, {
+      contentType: file.type,
     });
 
+    // Get download URL
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
     return NextResponse.json({
-      url: blob.url,
+      url: downloadURL,
       name: file.name,
     });
   } catch (error) {
