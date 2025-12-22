@@ -35,6 +35,8 @@ export interface PettyCashTransactionWithAccount {
   approvedAt: Date | null;
   rejectedAt: Date | null;
   rejectReason: string | null;
+  attachmentUrl: string | null;
+  attachmentName: string | null;
   createdAt: Date;
   updatedAt: Date;
   account: {
@@ -241,6 +243,8 @@ export async function createTransaction(data: {
   description?: string;
   reference?: string;
   requestedBy?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
 }): Promise<PettyCashTransactionWithAccount> {
   // For RETURN and TOPUP, auto-approve and update balance immediately
   const autoApprove =
@@ -256,6 +260,8 @@ export async function createTransaction(data: {
         description: data.description,
         reference: data.reference,
         requestedBy: data.requestedBy,
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
         status: autoApprove ? PettyCashStatus.APPROVED : PettyCashStatus.PENDING,
         approvedAt: autoApprove ? new Date() : null,
       },

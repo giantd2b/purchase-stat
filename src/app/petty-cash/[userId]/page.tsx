@@ -129,6 +129,7 @@ export default async function PettyCashUserPage({ params }: Props) {
                     <TableHead>ประเภท</TableHead>
                     <TableHead>รายละเอียด</TableHead>
                     <TableHead>เลขที่เอกสาร</TableHead>
+                    <TableHead>ไฟล์แนบ</TableHead>
                     <TableHead className="text-right">จำนวนเงิน</TableHead>
                     <TableHead>สถานะ</TableHead>
                   </TableRow>
@@ -167,6 +168,20 @@ export default async function PettyCashUserPage({ params }: Props) {
                       </TableCell>
                       <TableCell className="text-gray-500">
                         {tx.reference || "-"}
+                      </TableCell>
+                      <TableCell>
+                        {tx.attachmentUrl ? (
+                          <a
+                            href={tx.attachmentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            {tx.attachmentName || "ดูไฟล์"}
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </TableCell>
                       <TableCell
                         className={`text-right font-semibold ${

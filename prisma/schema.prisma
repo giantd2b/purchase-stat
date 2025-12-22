@@ -215,6 +215,8 @@ model PettyCashTransaction {
   rejectedAt  DateTime?
   rejectReason String?
   relatedTransactionId String? // สำหรับ transfer - link ไปยัง transaction อีกฝั่ง
+  attachmentUrl  String?       // URL ของไฟล์แนบ
+  attachmentName String?       // ชื่อไฟล์แนบ
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 

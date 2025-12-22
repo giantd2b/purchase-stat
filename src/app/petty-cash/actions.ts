@@ -22,6 +22,8 @@ export async function createWithdrawalAction(formData: FormData) {
   const amount = parseFloat(formData.get("amount") as string);
   const description = formData.get("description") as string;
   const reference = formData.get("reference") as string;
+  const attachmentUrl = formData.get("attachmentUrl") as string;
+  const attachmentName = formData.get("attachmentName") as string;
 
   if (!accountId || !amount || amount <= 0) {
     return { error: "Invalid input" };
@@ -35,6 +37,8 @@ export async function createWithdrawalAction(formData: FormData) {
       description: description || undefined,
       reference: reference || undefined,
       requestedBy: session.user.id,
+      attachmentUrl: attachmentUrl || undefined,
+      attachmentName: attachmentName || undefined,
     });
 
     revalidatePath("/petty-cash");
@@ -55,6 +59,8 @@ export async function createReturnAction(formData: FormData) {
   const amount = parseFloat(formData.get("amount") as string);
   const description = formData.get("description") as string;
   const reference = formData.get("reference") as string;
+  const attachmentUrl = formData.get("attachmentUrl") as string;
+  const attachmentName = formData.get("attachmentName") as string;
 
   if (!accountId || !amount || amount <= 0) {
     return { error: "Invalid input" };
@@ -68,6 +74,8 @@ export async function createReturnAction(formData: FormData) {
       description: description || undefined,
       reference: reference || undefined,
       requestedBy: session.user.id,
+      attachmentUrl: attachmentUrl || undefined,
+      attachmentName: attachmentName || undefined,
     });
 
     revalidatePath("/petty-cash");
@@ -88,6 +96,8 @@ export async function createTopupAction(formData: FormData) {
   const amount = parseFloat(formData.get("amount") as string);
   const description = formData.get("description") as string;
   const reference = formData.get("reference") as string;
+  const attachmentUrl = formData.get("attachmentUrl") as string;
+  const attachmentName = formData.get("attachmentName") as string;
 
   if (!accountId || !amount || amount <= 0) {
     return { error: "Invalid input" };
@@ -101,6 +111,8 @@ export async function createTopupAction(formData: FormData) {
       description: description || undefined,
       reference: reference || undefined,
       requestedBy: session.user.id,
+      attachmentUrl: attachmentUrl || undefined,
+      attachmentName: attachmentName || undefined,
     });
 
     revalidatePath("/petty-cash");

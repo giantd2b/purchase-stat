@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -70,6 +70,50 @@ export function PettyCashClient({
   const [initialBalance, setInitialBalance] = useState("");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<{ url: string; name: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    setFile(selectedFile);
+    setIsUploading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Upload failed");
+      }
+
+      setUploadedFile({ url: result.url, name: result.name });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload file");
+      setFile(null);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const clearFile = () => {
+    setFile(null);
+    setUploadedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const resetForm = () => {
     setSelectedAccount("");
@@ -77,6 +121,7 @@ export function PettyCashClient({
     setDescription("");
     setReference("");
     setError(null);
+    clearFile();
   };
 
   const resetTransferForm = () => {
@@ -118,6 +163,10 @@ export function PettyCashClient({
     formData.set("amount", amount);
     formData.set("description", description);
     formData.set("reference", reference);
+    if (uploadedFile) {
+      formData.set("attachmentUrl", uploadedFile.url);
+      formData.set("attachmentName", uploadedFile.name);
+    }
 
     startTransition(async () => {
       let result;
@@ -255,6 +304,43 @@ export function PettyCashClient({
               />
             </div>
 
+            {/* File Attachment */}
+            <div className="space-y-2">
+              <Label>แนบไฟล์ (ไม่บังคับ)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleFileChange}
+                  disabled={isUploading}
+                  className="flex-1"
+                />
+                {uploadedFile && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFile}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    X
+                  </Button>
+                )}
+              </div>
+              {isUploading && (
+                <p className="text-sm text-blue-500">กำลังอัปโหลด...</p>
+              )}
+              {uploadedFile && (
+                <p className="text-sm text-green-600">
+                  อัปโหลดสำเร็จ: {uploadedFile.name}
+                </p>
+              )}
+              <p className="text-xs text-gray-500">
+                รองรับ: รูปภาพ (JPG, PNG, GIF) หรือ PDF (ไม่เกิน 10MB)
+              </p>
+            </div>
+
             {error && (
               <div className="text-red-500 text-sm bg-red-50 p-2 rounded">
                 {error}
@@ -272,8 +358,8 @@ export function PettyCashClient({
               >
                 ยกเลิก
               </Button>
-              <Button type="submit" disabled={isPending || !selectedAccount}>
-                {isPending ? "กำลังบันทึก..." : "บันทึก"}
+              <Button type="submit" disabled={isPending || isUploading || !selectedAccount}>
+                {isPending ? "กำลังบันทึก..." : isUploading ? "กำลังอัปโหลด..." : "บันทึก"}
               </Button>
             </div>
           </form>
