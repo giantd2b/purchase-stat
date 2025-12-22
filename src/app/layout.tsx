@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { SessionProvider } from "@/components/providers/SessionProvider";
+import { auth } from "@/lib/auth";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,18 +20,27 @@ export const metadata: Metadata = {
   description: "Real-time procurement analytics and insights from Google Sheets",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  let session = null;
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error("Auth error:", error);
+  }
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
-        <Toaster />
+        <SessionProvider session={session}>
+          {children}
+          <Toaster />
+        </SessionProvider>
       </body>
     </html>
   );

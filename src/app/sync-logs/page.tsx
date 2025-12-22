@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { ArrowLeft, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { UserNav } from "@/components/UserNav";
 
 export const dynamic = "force-dynamic";
 
@@ -90,6 +91,7 @@ export default async function SyncLogsPage() {
                 </p>
               </div>
             </div>
+            <UserNav />
           </div>
         </div>
       </header>

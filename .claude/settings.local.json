@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(npx next dev:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(findstr:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(npm run sync:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

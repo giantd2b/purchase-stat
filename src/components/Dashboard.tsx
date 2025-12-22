@@ -45,6 +45,7 @@ import type {
   MonthlySpend,
   ProcurementRecord,
 } from "@/lib/google-sheets";
+import type { ItemSpend } from "@/lib/db";
 
 // Color palette for charts
 const COLORS = [
@@ -64,6 +65,7 @@ interface DashboardProps {
   kpis: KPIData;
   departmentData: DepartmentSpend[];
   vendorData: VendorSpend[];
+  itemData: ItemSpend[];
   monthlyData: MonthlySpend[];
   recentTransactions: ProcurementRecord[];
 }
@@ -118,6 +120,7 @@ export default function Dashboard({
   kpis,
   departmentData,
   vendorData,
+  itemData,
   monthlyData,
   recentTransactions,
 }: DashboardProps) {
@@ -282,43 +285,84 @@ export default function Dashboard({
         </Card>
       </div>
 
-      {/* Top Vendors Bar Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            Top 10 Vendors by Spend
-          </CardTitle>
-          <CardDescription>
-            Highest spending vendors
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={vendorData}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis type="number" tickFormatter={formatCompactNumber} />
-                <YAxis
-                  type="category"
-                  dataKey="vendor"
-                  width={150}
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(value) =>
-                    value.length > 25 ? `${value.substring(0, 25)}...` : value
-                  }
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="spend" name="Spend" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Top Vendors and Items - Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Vendors Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Top 10 Vendors by Spend
+            </CardTitle>
+            <CardDescription>
+              Highest spending vendors
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={vendorData}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis type="number" tickFormatter={formatCompactNumber} />
+                  <YAxis
+                    type="category"
+                    dataKey="vendor"
+                    width={150}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(value) =>
+                      value.length > 20 ? `${value.substring(0, 20)}...` : value
+                    }
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="spend" name="Spend" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Top Items Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5" />
+              Top 10 Items by Spend
+            </CardTitle>
+            <CardDescription>
+              Highest spending items
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={itemData}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis type="number" tickFormatter={formatCompactNumber} />
+                  <YAxis
+                    type="category"
+                    dataKey="item"
+                    width={150}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(value) =>
+                      value.length > 20 ? `${value.substring(0, 20)}...` : value
+                    }
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="spend" name="Spend" fill="#10b981" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Recent Transactions Table */}
       <Card>

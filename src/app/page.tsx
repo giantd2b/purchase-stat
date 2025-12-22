@@ -1,21 +1,32 @@
 import {
-  getKPIs,
-  getDepartmentSpend,
-  getTopVendors,
-  getMonthlySpend,
-  getRecentTransactions,
+  getKPIsFiltered,
+  getDepartmentSpendFiltered,
+  getTopVendorsFiltered,
+  getTopItemsFiltered,
+  getMonthlySpendFiltered,
+  getRecentTransactionsFiltered,
   getTotalRecordCount,
   getLastSyncStatus,
 } from "@/lib/db";
 import Dashboard from "@/components/Dashboard";
 import SyncButton from "@/components/SyncButton";
 import SyncItemsButton from "@/components/SyncItemsButton";
+import { UserNav } from "@/components/UserNav";
+import { DashboardDatePicker } from "@/components/DashboardDatePicker";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertCircle, Database } from "lucide-react";
+import { RefreshCw, AlertCircle, Database, FileText } from "lucide-react";
 import { revalidatePath } from "next/cache";
+import Link from "next/link";
 
 // Force dynamic rendering to ensure fresh data
 export const dynamic = "force-dynamic";
+
+interface PageProps {
+  searchParams: Promise<{
+    start?: string;
+    end?: string;
+  }>;
+}
 
 // Error component for when data fetching fails
 function ErrorState({ message }: { message: string }) {
@@ -64,10 +75,26 @@ async function refreshData() {
 }
 
 // Main page component - Server Component
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: PageProps) {
+  const params = await searchParams;
+
+  // Default to Year to Date (January 1 of current year to today)
+  const now = new Date();
+  const yearStart = `${now.getFullYear()}-01-01`;
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  const startStr = params.start || yearStart;
+  const endStr = params.end || todayStr;
+
+  const startDate = new Date(startStr);
+  startDate.setHours(0, 0, 0, 0);
+
+  const endDate = new Date(endStr + "T23:59:59.999");
+
   let kpis;
   let departmentData;
   let vendorData;
+  let itemData;
   let monthlyData;
   let recentTransactions;
   let totalRecords = 0;
@@ -75,14 +102,15 @@ export default async function HomePage() {
   let error: string | null = null;
 
   try {
-    // Fetch all data from database in parallel
-    [kpis, departmentData, vendorData, monthlyData, recentTransactions, totalRecords, lastSync] =
+    // Fetch all data from database in parallel with date filtering
+    [kpis, departmentData, vendorData, itemData, monthlyData, recentTransactions, totalRecords, lastSync] =
       await Promise.all([
-        getKPIs(),
-        getDepartmentSpend(),
-        getTopVendors(10),
-        getMonthlySpend(),
-        getRecentTransactions(20),
+        getKPIsFiltered(startDate, endDate),
+        getDepartmentSpendFiltered(startDate, endDate),
+        getTopVendorsFiltered(startDate, endDate, 10),
+        getTopItemsFiltered(startDate, endDate, 10),
+        getMonthlySpendFiltered(startDate, endDate),
+        getRecentTransactionsFiltered(startDate, endDate, 20),
         getTotalRecordCount(),
         getLastSyncStatus(),
       ]);
@@ -114,25 +142,39 @@ export default async function HomePage() {
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                Procurement Dashboard
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Real-time procurement analytics and insights
-              </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  Procurement Dashboard
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Real-time procurement analytics and insights
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Link href="/daily-report">
+                  <Button variant="outline" size="sm">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Daily Report
+                  </Button>
+                </Link>
+                <SyncItemsButton />
+                <SyncButton />
+                <form action={refreshData}>
+                  <Button variant="outline" size="sm" type="submit">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                </form>
+                <UserNav />
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <SyncItemsButton />
-              <SyncButton />
-              <form action={refreshData}>
-                <Button variant="outline" size="sm" type="submit">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
-              </form>
-            </div>
+            {/* Date Picker */}
+            <DashboardDatePicker
+              initialStart={startStr}
+              initialEnd={endStr}
+            />
           </div>
         </div>
       </header>
@@ -143,6 +185,7 @@ export default async function HomePage() {
           kpis={kpis!}
           departmentData={departmentData!}
           vendorData={vendorData!}
+          itemData={itemData!}
           monthlyData={monthlyData!}
           recentTransactions={recentTransactions!.map((tx: { date: string; vendor: string; productName: string; totalPrice: number; minorGroup: string }) => ({
             date: tx.date,
@@ -159,9 +202,13 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <p className="text-center text-sm text-gray-500 dark:text-gray-400">
             {totalRecords.toLocaleString()} total records • Last sync: {lastSyncTime} •{" "}
-            <a href="/sync-logs" className="text-blue-500 hover:underline">
-              View Sync Logs
-            </a>
+            <Link href="/daily-report" className="text-blue-500 hover:underline">
+              Daily Report
+            </Link>
+            {" • "}
+            <Link href="/sync-logs" className="text-blue-500 hover:underline">
+              Sync Logs
+            </Link>
           </p>
         </div>
       </footer>
