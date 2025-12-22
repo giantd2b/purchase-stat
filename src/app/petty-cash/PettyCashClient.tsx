@@ -24,6 +24,7 @@ import {
   createTopupAction,
   createAccountAction,
   transferAction,
+  createBulkWithdrawalAction,
 } from "./actions";
 
 interface Account {
@@ -75,9 +76,14 @@ export function PettyCashClient({
   const [isUploading, setIsUploading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{
-    amount: number | null;
-    description: string | null;
-    reference: string | null;
+    items: Array<{
+      amount: number;
+      description: string | null;
+      reference: string | null;
+      selected: boolean;
+    }>;
+    totalAmount: number | null;
+    documentType: string | null;
     confidence: string;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,23 +148,75 @@ export function PettyCashClient({
         throw new Error(result.error || "Scan failed");
       }
 
-      setScanResult(result.data);
+      // Add selected: true to all items by default
+      const itemsWithSelection = (result.data.items || []).map((item: { amount: number; description: string | null; reference: string | null }) => ({
+        ...item,
+        selected: true,
+      }));
 
-      // Auto-fill form fields
-      if (result.data.amount) {
-        setAmount(result.data.amount.toString());
-      }
-      if (result.data.description && !description) {
-        setDescription(result.data.description);
-      }
-      if (result.data.reference && !reference) {
-        setReference(result.data.reference);
+      setScanResult({
+        items: itemsWithSelection,
+        totalAmount: result.data.totalAmount,
+        documentType: result.data.documentType,
+        confidence: result.data.confidence,
+      });
+
+      // If only one item, auto-fill form fields
+      if (itemsWithSelection.length === 1) {
+        const item = itemsWithSelection[0];
+        if (item.amount) {
+          setAmount(item.amount.toString());
+        }
+        if (item.description && !description) {
+          setDescription(item.description);
+        }
+        if (item.reference && !reference) {
+          setReference(item.reference);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to scan image");
     } finally {
       setIsScanning(false);
     }
+  };
+
+  const toggleItemSelection = (index: number) => {
+    if (!scanResult) return;
+    const newItems = [...scanResult.items];
+    newItems[index] = { ...newItems[index], selected: !newItems[index].selected };
+    setScanResult({ ...scanResult, items: newItems });
+  };
+
+  const handleBulkSubmit = async () => {
+    if (!scanResult || !selectedAccount || transactionType !== "WITHDRAW") return;
+
+    const selectedItems = scanResult.items.filter(item => item.selected);
+    if (selectedItems.length === 0) {
+      setError("กรุณาเลือกอย่างน้อย 1 รายการ");
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await createBulkWithdrawalAction(
+        selectedAccount,
+        selectedItems.map(item => ({
+          amount: item.amount,
+          description: item.description || undefined,
+          reference: item.reference || undefined,
+        })),
+        uploadedFile?.url,
+        uploadedFile?.name
+      );
+
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setOpenTransaction(false);
+        resetForm();
+      }
+    });
   };
 
   const resetForm = () => {
@@ -398,21 +456,63 @@ export function PettyCashClient({
                   )}
                 </div>
               )}
-              {scanResult && (
-                <div className="text-sm bg-blue-50 p-2 rounded border border-blue-200">
-                  <p className="font-medium text-blue-800">ผลการสแกน:</p>
-                  {scanResult.amount && (
-                    <p>💰 จำนวนเงิน: ฿{scanResult.amount.toLocaleString()}</p>
+              {scanResult && scanResult.items.length > 0 && (
+                <div className="text-sm bg-blue-50 p-3 rounded border border-blue-200 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium text-blue-800">
+                      ผลการสแกน ({scanResult.items.length} รายการ)
+                    </p>
+                    <span className="text-xs">
+                      {scanResult.confidence === 'high' ? '🟢' : scanResult.confidence === 'medium' ? '🟡' : '🔴'}
+                    </span>
+                  </div>
+                  {scanResult.documentType && (
+                    <p className="text-xs text-gray-600">📄 {scanResult.documentType}</p>
                   )}
-                  {scanResult.description && (
-                    <p>📝 รายละเอียด: {scanResult.description}</p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {scanResult.items.map((item, index) => (
+                      <label
+                        key={index}
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
+                          item.selected ? 'bg-blue-100' : 'bg-gray-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={item.selected}
+                          onChange={() => toggleItemSelection(index)}
+                          className="rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">
+                            {item.description || 'ไม่ระบุรายละเอียด'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {item.reference && `#${item.reference} • `}
+                            ฿{item.amount.toLocaleString()}
+                          </p>
+                        </div>
+                        <span className="font-semibold text-blue-700">
+                          ฿{item.amount.toLocaleString()}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {scanResult.totalAmount && (
+                    <p className="text-right font-medium border-t pt-2">
+                      รวม: ฿{scanResult.totalAmount.toLocaleString()}
+                    </p>
                   )}
-                  {scanResult.reference && (
-                    <p>🔢 เลขที่เอกสาร: {scanResult.reference}</p>
+                  {scanResult.items.length > 1 && transactionType === "WITHDRAW" && selectedAccount && (
+                    <Button
+                      type="button"
+                      onClick={handleBulkSubmit}
+                      disabled={isPending || scanResult.items.filter(i => i.selected).length === 0}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      {isPending ? "กำลังบันทึก..." : `บันทึก ${scanResult.items.filter(i => i.selected).length} รายการที่เลือก`}
+                    </Button>
                   )}
-                  <p className="text-xs text-gray-500 mt-1">
-                    ความมั่นใจ: {scanResult.confidence === 'high' ? '🟢 สูง' : scanResult.confidence === 'medium' ? '🟡 ปานกลาง' : '🔴 ต่ำ'}
-                  </p>
                 </div>
               )}
               <p className="text-xs text-gray-500">

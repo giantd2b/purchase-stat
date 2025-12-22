@@ -210,3 +210,50 @@ export async function transferAction(formData: FormData) {
     return { error: message };
   }
 }
+
+interface BulkTransactionItem {
+  amount: number;
+  description?: string;
+  reference?: string;
+}
+
+export async function createBulkWithdrawalAction(
+  accountId: string,
+  items: BulkTransactionItem[],
+  attachmentUrl?: string,
+  attachmentName?: string
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  if (!accountId || !items || items.length === 0) {
+    return { error: "Invalid input" };
+  }
+
+  try {
+    const results = [];
+    for (const item of items) {
+      if (item.amount && item.amount > 0) {
+        const tx = await createTransaction({
+          accountId,
+          type: PettyCashType.WITHDRAW,
+          amount: item.amount,
+          description: item.description || undefined,
+          reference: item.reference || undefined,
+          requestedBy: session.user.id,
+          attachmentUrl: attachmentUrl || undefined,
+          attachmentName: attachmentName || undefined,
+        });
+        results.push(tx);
+      }
+    }
+
+    revalidatePath("/petty-cash");
+    return { success: true, count: results.length };
+  } catch (error) {
+    console.error("Failed to create bulk withdrawal:", error);
+    return { error: "Failed to create transactions" };
+  }
+}

@@ -51,7 +51,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     // Call Claude Vision API
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [
         {
           role: "user",
@@ -66,18 +66,27 @@ export async function POST(request: Request): Promise<NextResponse> {
             },
             {
               type: "text",
-              text: `วิเคราะห์รูปภาพนี้และดึงข้อมูลจำนวนเงินออกมา
+              text: `วิเคราะห์รูปภาพนี้และดึงข้อมูลรายการทั้งหมดออกมา
 
 กรุณาตอบในรูปแบบ JSON เท่านั้น:
 {
-  "amount": <ตัวเลขจำนวนเงิน หรือ null ถ้าหาไม่เจอ>,
-  "description": "<คำอธิบายสั้นๆ เกี่ยวกับเอกสาร เช่น 'ใบเสร็จค่าอาหาร' หรือ 'ใบกำกับภาษี'>",
-  "reference": "<เลขที่เอกสาร/ใบเสร็จ ถ้ามี หรือ null>",
+  "items": [
+    {
+      "amount": <ตัวเลขจำนวนเงิน>,
+      "description": "<คำอธิบายรายการ เช่น 'ค่าอาหาร', 'ค่าแท็กซี่'>",
+      "reference": "<เลขที่เอกสาร/ใบเสร็จ ถ้ามี หรือ null>"
+    }
+  ],
+  "totalAmount": <ยอดรวมทั้งหมด หรือ null>,
+  "documentType": "<ประเภทเอกสาร เช่น 'ใบเสร็จ', 'ใบกำกับภาษี', 'บิลเงินสด'>",
   "confidence": "<high/medium/low>"
 }
 
-ถ้าเป็นใบเสร็จหรือ invoice ให้ดึงยอดรวมสุทธิ (total/grand total)
-ถ้ามีหลายจำนวนเงิน ให้เลือกยอดรวมหรือยอดสุดท้าย`,
+กฎการดึงข้อมูล:
+- ถ้าเป็นใบเสร็จที่มีหลายรายการ ให้ดึงแต่ละรายการแยกกัน
+- ถ้าเป็นใบเสร็จรายการเดียว ให้ใส่ใน items เป็น 1 รายการ
+- description ควรสั้นกระชับ 2-5 คำ
+- ถ้ามียอดรวมให้ใส่ใน totalAmount ด้วย`,
             },
           ],
         },
@@ -101,9 +110,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({
       success: true,
       data: {
-        amount: result.amount,
-        description: result.description,
-        reference: result.reference,
+        items: result.items || [],
+        totalAmount: result.totalAmount,
+        documentType: result.documentType,
         confidence: result.confidence,
       },
     });
