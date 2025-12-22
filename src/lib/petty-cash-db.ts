@@ -40,6 +40,7 @@ export interface PettyCashTransactionWithAccount {
   createdAt: Date;
   updatedAt: Date;
   account: {
+    balance: number;
     user: {
       id: string;
       name: string | null;
@@ -206,7 +207,8 @@ export async function getTransactions(
     where,
     include: {
       account: {
-        include: {
+        select: {
+          balance: true,
           user: {
             select: {
               id: true,
@@ -227,6 +229,10 @@ export async function getTransactions(
   return transactions.map((tx) => ({
     ...tx,
     amount: Number(tx.amount),
+    account: {
+      ...tx.account,
+      balance: Number(tx.account.balance),
+    },
   }));
 }
 
@@ -267,7 +273,8 @@ export async function createTransaction(data: {
       },
       include: {
         account: {
-          include: {
+          select: {
+            balance: true,
             user: {
               select: {
                 id: true,
@@ -302,6 +309,10 @@ export async function createTransaction(data: {
   return {
     ...transaction,
     amount: Number(transaction.amount),
+    account: {
+      ...transaction.account,
+      balance: Number(transaction.account.balance),
+    },
   };
 }
 
@@ -333,7 +344,8 @@ export async function approveTransaction(
       },
       include: {
         account: {
-          include: {
+          select: {
+            balance: true,
             user: {
               select: {
                 id: true,
@@ -368,6 +380,10 @@ export async function approveTransaction(
   return {
     ...transaction,
     amount: Number(transaction.amount),
+    account: {
+      ...transaction.account,
+      balance: Number(transaction.account.balance),
+    },
   };
 }
 
@@ -384,7 +400,8 @@ export async function rejectTransaction(
     },
     include: {
       account: {
-        include: {
+        select: {
+          balance: true,
           user: {
             select: {
               id: true,
@@ -401,6 +418,10 @@ export async function rejectTransaction(
   return {
     ...transaction,
     amount: Number(transaction.amount),
+    account: {
+      ...transaction.account,
+      balance: Number(transaction.account.balance),
+    },
   };
 }
 
@@ -571,7 +592,8 @@ export async function transferBetweenAccounts(data: {
       where: { id: outTx.id },
       include: {
         account: {
-          include: {
+          select: {
+            balance: true,
             user: { select: { id: true, name: true, email: true, image: true } },
           },
         },
@@ -582,7 +604,8 @@ export async function transferBetweenAccounts(data: {
       where: { id: inTx.id },
       include: {
         account: {
-          include: {
+          select: {
+            balance: true,
             user: { select: { id: true, name: true, email: true, image: true } },
           },
         },
@@ -593,8 +616,22 @@ export async function transferBetweenAccounts(data: {
   });
 
   return {
-    outTransaction: { ...result.outTxFull!, amount: Number(result.outTxFull!.amount) },
-    inTransaction: { ...result.inTxFull!, amount: Number(result.inTxFull!.amount) },
+    outTransaction: {
+      ...result.outTxFull!,
+      amount: Number(result.outTxFull!.amount),
+      account: {
+        ...result.outTxFull!.account,
+        balance: Number(result.outTxFull!.account.balance),
+      },
+    },
+    inTransaction: {
+      ...result.inTxFull!,
+      amount: Number(result.inTxFull!.amount),
+      account: {
+        ...result.inTxFull!.account,
+        balance: Number(result.inTxFull!.account.balance),
+      },
+    },
   };
 }
 

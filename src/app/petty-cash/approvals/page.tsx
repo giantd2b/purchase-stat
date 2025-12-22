@@ -89,6 +89,7 @@ export default async function ApprovalsPage() {
                     <TableHead>ประเภท</TableHead>
                     <TableHead>รายละเอียด</TableHead>
                     <TableHead>เลขที่เอกสาร</TableHead>
+                    <TableHead>ไฟล์แนบ</TableHead>
                     <TableHead className="text-right">จำนวนเงิน</TableHead>
                     <TableHead className="text-right">ยอดปัจจุบัน</TableHead>
                     <TableHead></TableHead>
@@ -143,12 +144,25 @@ export default async function ApprovalsPage() {
                       <TableCell className="text-gray-500">
                         {tx.reference || "-"}
                       </TableCell>
+                      <TableCell>
+                        {tx.attachmentUrl ? (
+                          <a
+                            href={tx.attachmentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            {tx.attachmentName || "ดูไฟล์"}
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-semibold text-red-600">
                         {formatCurrency(tx.amount)}
                       </TableCell>
                       <TableCell className="text-right text-gray-500">
-                        {/* This would need account balance - we'll add it via join */}
-                        -
+                        {formatCurrency(tx.account.balance)}
                       </TableCell>
                       <TableCell className="text-right">
                         <ApprovalButtons transactionId={tx.id} />
