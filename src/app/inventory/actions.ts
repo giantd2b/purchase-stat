@@ -10,6 +10,7 @@ import {
   getOrCreateStockItem,
   updateStockItem,
 } from "@/lib/inventory-db";
+import { logActivityFromSession } from "@/lib/activity-log";
 import { StockTransactionType } from "@prisma/client";
 
 // ============================================
@@ -61,6 +62,14 @@ export async function receiveItemsAction(data: {
       requestedBy: session.user.id,
     });
 
+    await logActivityFromSession(session, {
+      action: "STOCK_RECEIVE",
+      targetId: transaction.id,
+      targetType: "StockTransaction",
+      description: `นำเข้าสินค้า ${data.items.length} รายการ`,
+      metadata: { transactionNumber: transaction.transactionNumber, itemCount: data.items.length, reference: data.reference },
+    });
+
     revalidatePath("/inventory");
     revalidatePath("/inventory/transactions");
 
@@ -108,6 +117,14 @@ export async function withdrawItemsAction(data: {
       requestedBy: session.user.id,
     });
 
+    await logActivityFromSession(session, {
+      action: "STOCK_WITHDRAW",
+      targetId: transaction.id,
+      targetType: "StockTransaction",
+      description: `เบิกจ่ายสินค้า ${data.items.length} รายการ`,
+      metadata: { transactionNumber: transaction.transactionNumber, itemCount: data.items.length, reference: data.reference },
+    });
+
     revalidatePath("/inventory");
     revalidatePath("/inventory/transactions");
     revalidatePath("/inventory/approvals");
@@ -134,7 +151,15 @@ export async function approveTransactionAction(transactionId: string) {
   }
 
   try {
-    await approveTransaction(transactionId, session.user.id);
+    const tx = await approveTransaction(transactionId, session.user.id);
+
+    await logActivityFromSession(session, {
+      action: "STOCK_APPROVED",
+      targetId: transactionId,
+      targetType: "StockTransaction",
+      description: `อนุมัติรายการสต็อก ${tx.transactionNumber}`,
+      metadata: { transactionNumber: tx.transactionNumber, type: tx.type },
+    });
 
     revalidatePath("/inventory");
     revalidatePath("/inventory/transactions");
@@ -165,7 +190,15 @@ export async function rejectTransactionAction(
   }
 
   try {
-    await rejectTransaction(transactionId, reason);
+    const tx = await rejectTransaction(transactionId, reason);
+
+    await logActivityFromSession(session, {
+      action: "STOCK_REJECTED",
+      targetId: transactionId,
+      targetType: "StockTransaction",
+      description: `ปฏิเสธรายการสต็อก ${tx.transactionNumber}`,
+      metadata: { transactionNumber: tx.transactionNumber, type: tx.type, reason },
+    });
 
     revalidatePath("/inventory");
     revalidatePath("/inventory/transactions");
@@ -272,6 +305,20 @@ export async function adjustStockAction(data: AdjustStockInput) {
       ],
       description: data.reason,
       requestedBy: session.user.id,
+    });
+
+    await logActivityFromSession(session, {
+      action: "STOCK_ADJUST",
+      targetId: transaction.id,
+      targetType: "StockTransaction",
+      description: `ปรับยอดสินค้า ${data.isIncrease ? "เพิ่ม" : "ลด"} ${data.quantity} หน่วย`,
+      metadata: {
+        transactionNumber: transaction.transactionNumber,
+        stockItemId: data.stockItemId,
+        quantity: data.quantity,
+        isIncrease: data.isIncrease,
+        reason: data.reason,
+      },
     });
 
     revalidatePath("/inventory");

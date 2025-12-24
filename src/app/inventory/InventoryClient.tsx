@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -101,6 +116,7 @@ export default function InventoryClient({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [itemComboboxOpen, setItemComboboxOpen] = useState<number | null>(null);
 
   // Receive form state
   const [receiveItems, setReceiveItems] = useState<
@@ -220,6 +236,12 @@ export default function InventoryClient({
       item.item.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Helper function to get selected item name
+  const getSelectedItemName = (itemId: string) => {
+    const item = allItems.find((i) => i.id === itemId);
+    return item ? `${item.id} - ${item.name}` : "";
+  };
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -235,6 +257,12 @@ export default function InventoryClient({
               </p>
             </div>
             <div className="flex gap-2">
+              <Link href="/">
+                <Button variant="outline">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  กลับหน้าหลัก
+                </Button>
+              </Link>
               <Dialog open={receiveDialogOpen} onOpenChange={setReceiveDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-green-600 hover:bg-green-700">
@@ -269,26 +297,62 @@ export default function InventoryClient({
 
                         <div className="grid grid-cols-2 gap-3">
                           <div className="col-span-2">
-                            <Label>สินค้า</Label>
-                            <Select
-                              value={item.itemId}
-                              onValueChange={(value) => {
-                                const newItems = [...receiveItems];
-                                newItems[index].itemId = value;
-                                setReceiveItems(newItems);
-                              }}
+                            <Label>สินค้า (พิมพ์ค้นหา รหัส, ชื่อ, หมวด, ประเภท)</Label>
+                            <Popover
+                              open={itemComboboxOpen === index}
+                              onOpenChange={(open) => setItemComboboxOpen(open ? index : null)}
                             >
-                              <SelectTrigger>
-                                <SelectValue placeholder="เลือกสินค้า" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {allItems.map((i) => (
-                                  <SelectItem key={i.id} value={i.id}>
-                                    {i.id} - {i.name} ({i.unit || "-"})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={itemComboboxOpen === index}
+                                  className="w-full justify-between font-normal"
+                                >
+                                  {item.itemId
+                                    ? getSelectedItemName(item.itemId)
+                                    : "เลือกสินค้า..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[500px] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="ค้นหา รหัส, ชื่อ, หมวด, ประเภท..." />
+                                  <CommandList>
+                                    <CommandEmpty>ไม่พบสินค้าที่ค้นหา</CommandEmpty>
+                                    <CommandGroup className="max-h-64 overflow-auto">
+                                      {allItems.map((i) => (
+                                        <CommandItem
+                                          key={i.id}
+                                          value={`${i.id} ${i.name} ${i.category || ""} ${i.type || ""} ${i.supplier1 || ""} ${i.supplier2 || ""}`}
+                                          onSelect={() => {
+                                            const newItems = [...receiveItems];
+                                            newItems[index].itemId = i.id;
+                                            setReceiveItems(newItems);
+                                            setItemComboboxOpen(null);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              item.itemId === i.id ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">{i.id} - {i.name} ({i.unit || "-"})</span>
+                                            {(i.category || i.type) && (
+                                              <span className="text-xs text-muted-foreground">
+                                                {[i.category, i.type].filter(Boolean).join(" / ")}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </div>
 
                           <div>

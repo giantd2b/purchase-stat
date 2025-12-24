@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Check, ChevronsUpDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,12 +20,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -72,12 +80,19 @@ export default function ItemsClient({ stockItems, availableItems }: Props) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [itemComboboxOpen, setItemComboboxOpen] = useState(false);
 
   // Add form state
   const [selectedItemId, setSelectedItemId] = useState("");
   const [minQuantity, setMinQuantity] = useState("");
   const [maxQuantity, setMaxQuantity] = useState("");
   const [location, setLocation] = useState("");
+
+  // Helper function to get selected item name
+  const getSelectedItemName = (itemId: string) => {
+    const item = availableItems.find((i) => i.id === itemId);
+    return item ? `${item.id} - ${item.name}` : "";
+  };
 
   // Edit form state
   const [editingItem, setEditingItem] = useState<StockItemWithDetails | null>(
@@ -187,28 +202,61 @@ export default function ItemsClient({ stockItems, availableItems }: Props) {
                     )}
 
                     <div>
-                      <Label>เลือกสินค้า</Label>
-                      <Select
-                        value={selectedItemId}
-                        onValueChange={setSelectedItemId}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="เลือกสินค้าที่ยังไม่อยู่ในสต๊อก" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableItems.length === 0 ? (
-                            <SelectItem value="-" disabled>
-                              ไม่มีสินค้าที่พร้อมเพิ่ม
-                            </SelectItem>
-                          ) : (
-                            availableItems.map((item) => (
-                              <SelectItem key={item.id} value={item.id}>
-                                {item.id} - {item.name}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Label>เลือกสินค้า (พิมพ์ค้นหา รหัส, ชื่อ, หมวด, ประเภท)</Label>
+                      <Popover open={itemComboboxOpen} onOpenChange={setItemComboboxOpen}>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={itemComboboxOpen}
+                            className="w-full justify-between font-normal"
+                          >
+                            {selectedItemId
+                              ? getSelectedItemName(selectedItemId)
+                              : "เลือกสินค้าที่ยังไม่อยู่ในสต๊อก..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[450px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="ค้นหา รหัส, ชื่อ, หมวด, ประเภท..." />
+                            <CommandList>
+                              <CommandEmpty>
+                                {availableItems.length === 0
+                                  ? "ไม่มีสินค้าที่พร้อมเพิ่ม"
+                                  : "ไม่พบสินค้าที่ค้นหา"}
+                              </CommandEmpty>
+                              <CommandGroup className="max-h-64 overflow-auto">
+                                {availableItems.map((item) => (
+                                  <CommandItem
+                                    key={item.id}
+                                    value={`${item.id} ${item.name} ${item.category || ""} ${item.type || ""} ${item.supplier1 || ""} ${item.supplier2 || ""}`}
+                                    onSelect={() => {
+                                      setSelectedItemId(item.id);
+                                      setItemComboboxOpen(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedItemId === item.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{item.id} - {item.name} ({item.unit || "-"})</span>
+                                      {(item.category || item.type) && (
+                                        <span className="text-xs text-muted-foreground">
+                                          {[item.category, item.type].filter(Boolean).join(" / ")}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

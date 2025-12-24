@@ -80,6 +80,71 @@ model VerificationToken {
 }
 
 // ============================================
+// Activity Log Model
+// ============================================
+
+enum ActivityAction {
+  // Auth actions
+  LOGIN
+  LOGOUT
+
+  // User management
+  USER_CREATED
+  USER_UPDATED
+  USER_DELETED
+  USER_ROLE_CHANGED
+
+  // Petty cash actions
+  PETTY_CASH_WITHDRAW
+  PETTY_CASH_RETURN
+  PETTY_CASH_TOPUP
+  PETTY_CASH_TRANSFER
+  PETTY_CASH_APPROVED
+  PETTY_CASH_REJECTED
+  PETTY_CASH_EDITED
+  PETTY_CASH_DELETED
+
+  // Inventory actions
+  STOCK_RECEIVE
+  STOCK_WITHDRAW
+  STOCK_ADJUST
+  STOCK_TRANSFER
+  STOCK_APPROVED
+  STOCK_REJECTED
+
+  // Sync actions
+  DATA_SYNC_STARTED
+  DATA_SYNC_COMPLETED
+  DATA_SYNC_FAILED
+  ITEMS_SYNC_STARTED
+  ITEMS_SYNC_COMPLETED
+  ITEMS_SYNC_FAILED
+
+  // General
+  OTHER
+}
+
+model ActivityLog {
+  id          String         @id @default(cuid())
+  action      ActivityAction
+  userId      String?        // User who performed the action (null for system actions)
+  userName    String?        // Denormalized for display
+  userEmail   String?        // Denormalized for display
+  targetId    String?        // ID of the affected resource
+  targetType  String?        // Type of resource (User, PettyCash, Stock, etc.)
+  description String?        // Human-readable description
+  metadata    Json?          // Additional data (old values, new values, etc.)
+  ipAddress   String?        // Client IP if available
+  userAgent   String?        // Browser/client info
+  createdAt   DateTime       @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
+}
+
+// ============================================
 // Application Models
 // ============================================
 

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { authPrisma } from "@/lib/auth-db";
 import { UserManagementClient } from "@/components/UserManagementClient";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Activity } from "lucide-react";
 import Link from "next/link";
 import { UserNav } from "@/components/UserNav";
 
@@ -49,7 +49,15 @@ export default async function UsersPage() {
                 </p>
               </div>
             </div>
-            <UserNav />
+            <div className="flex items-center gap-3">
+              <Link href="/admin/activity-logs">
+                <Button variant="outline" size="sm">
+                  <Activity className="h-4 w-4 mr-2" />
+                  Activity Logs
+                </Button>
+              </Link>
+              <UserNav />
+            </div>
           </div>
         </div>
       </header>

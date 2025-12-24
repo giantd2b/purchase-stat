@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { authPrisma } from "@/lib/auth-db";
+import { logActivity } from "@/lib/activity-log";
 import type { UserRole } from "@prisma/client";
 
 // Extend the session type to include role
@@ -62,6 +63,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = dbUser?.role || "USER";
       }
       return session;
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      // Log successful login
+      await logActivity({
+        action: "LOGIN",
+        userId: user.id,
+        userName: user.name,
+        userEmail: user.email,
+        description: `เข้าสู่ระบบ`,
+        metadata: { provider: "google" },
+      });
+    },
+    async signOut(message) {
+      // Log logout - handle both session and token strategies
+      const session = "session" in message ? message.session : null;
+      if (session?.userId) {
+        const user = await authPrisma.user.findUnique({
+          where: { id: session.userId },
+          select: { name: true, email: true },
+        });
+        await logActivity({
+          action: "LOGOUT",
+          userId: session.userId,
+          userName: user?.name,
+          userEmail: user?.email,
+          description: `ออกจากระบบ`,
+        });
+      }
     },
   },
   pages: {

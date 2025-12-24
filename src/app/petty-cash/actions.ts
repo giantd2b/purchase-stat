@@ -11,7 +11,8 @@ import {
   transferBetweenAccounts,
   editTransaction,
 } from "@/lib/petty-cash-db";
-import { PettyCashType } from "@prisma/client";
+import { logActivityFromSession } from "@/lib/activity-log";
+import { PettyCashType, ActivityAction } from "@prisma/client";
 
 export async function createWithdrawalAction(formData: FormData) {
   const session = await auth();
@@ -31,7 +32,7 @@ export async function createWithdrawalAction(formData: FormData) {
   }
 
   try {
-    await createTransaction({
+    const tx = await createTransaction({
       accountId,
       type: PettyCashType.WITHDRAW,
       amount,
@@ -40,6 +41,14 @@ export async function createWithdrawalAction(formData: FormData) {
       requestedBy: session.user.id,
       attachmentUrl: attachmentUrl || undefined,
       attachmentName: attachmentName || undefined,
+    });
+
+    await logActivityFromSession(session, {
+      action: "PETTY_CASH_WITHDRAW",
+      targetId: tx.id,
+      targetType: "PettyCashTransaction",
+      description: `เบิกเงินสดย่อย ${amount.toLocaleString()} บาท`,
+      metadata: { amount, description, reference, accountId },
     });
 
     revalidatePath("/petty-cash");
@@ -68,7 +77,7 @@ export async function createReturnAction(formData: FormData) {
   }
 
   try {
-    await createTransaction({
+    const tx = await createTransaction({
       accountId,
       type: PettyCashType.RETURN,
       amount,
@@ -77,6 +86,14 @@ export async function createReturnAction(formData: FormData) {
       requestedBy: session.user.id,
       attachmentUrl: attachmentUrl || undefined,
       attachmentName: attachmentName || undefined,
+    });
+
+    await logActivityFromSession(session, {
+      action: "PETTY_CASH_RETURN",
+      targetId: tx.id,
+      targetType: "PettyCashTransaction",
+      description: `คืนเงินทอน ${amount.toLocaleString()} บาท`,
+      metadata: { amount, description, reference, accountId },
     });
 
     revalidatePath("/petty-cash");
@@ -105,7 +122,7 @@ export async function createTopupAction(formData: FormData) {
   }
 
   try {
-    await createTransaction({
+    const tx = await createTransaction({
       accountId,
       type: PettyCashType.TOPUP,
       amount,
@@ -114,6 +131,14 @@ export async function createTopupAction(formData: FormData) {
       requestedBy: session.user.id,
       attachmentUrl: attachmentUrl || undefined,
       attachmentName: attachmentName || undefined,
+    });
+
+    await logActivityFromSession(session, {
+      action: "PETTY_CASH_TOPUP",
+      targetId: tx.id,
+      targetType: "PettyCashTransaction",
+      description: `เติมเงินเข้ากองทุน ${amount.toLocaleString()} บาท`,
+      metadata: { amount, description, reference, accountId },
     });
 
     revalidatePath("/petty-cash");
@@ -131,7 +156,16 @@ export async function approveTransactionAction(transactionId: string) {
   }
 
   try {
-    await approveTransaction(transactionId, session.user.id);
+    const tx = await approveTransaction(transactionId, session.user.id);
+
+    await logActivityFromSession(session, {
+      action: "PETTY_CASH_APPROVED",
+      targetId: transactionId,
+      targetType: "PettyCashTransaction",
+      description: `อนุมัติรายการเงินสดย่อย ${Number(tx.amount).toLocaleString()} บาท`,
+      metadata: { transactionId, amount: Number(tx.amount), type: tx.type },
+    });
+
     revalidatePath("/petty-cash");
     return { success: true };
   } catch (error) {
@@ -150,7 +184,16 @@ export async function rejectTransactionAction(
   }
 
   try {
-    await rejectTransaction(transactionId, reason);
+    const tx = await rejectTransaction(transactionId, reason);
+
+    await logActivityFromSession(session, {
+      action: "PETTY_CASH_REJECTED",
+      targetId: transactionId,
+      targetType: "PettyCashTransaction",
+      description: `ปฏิเสธรายการเงินสดย่อย ${Number(tx.amount).toLocaleString()} บาท`,
+      metadata: { transactionId, amount: Number(tx.amount), type: tx.type, reason },
+    });
+
     revalidatePath("/petty-cash");
     return { success: true };
   } catch (error) {
@@ -195,12 +238,20 @@ export async function transferAction(formData: FormData) {
   }
 
   try {
-    await transferBetweenAccounts({
+    const result = await transferBetweenAccounts({
       fromAccountId,
       toAccountId,
       amount,
       description: description || undefined,
       requestedBy: session.user.id,
+    });
+
+    await logActivityFromSession(session, {
+      action: "PETTY_CASH_TRANSFER",
+      targetId: result.outTransaction.id,
+      targetType: "PettyCashTransaction",
+      description: `โอนเงินสดย่อย ${amount.toLocaleString()} บาท`,
+      metadata: { fromAccountId, toAccountId, amount, description },
     });
 
     revalidatePath("/petty-cash");
@@ -280,6 +331,19 @@ export async function editTransactionAction(data: {
     const result = await editTransaction({
       ...data,
       editedBy: session.user.id,
+    });
+
+    await logActivityFromSession(session, {
+      action: "PETTY_CASH_EDITED",
+      targetId: data.transactionId,
+      targetType: "PettyCashTransaction",
+      description: `แก้ไขรายการเงินสดย่อย เป็น ${data.amount.toLocaleString()} บาท`,
+      metadata: {
+        transactionId: data.transactionId,
+        newAmount: data.amount,
+        newDescription: data.description,
+        newReference: data.reference,
+      },
     });
 
     revalidatePath("/petty-cash");
