@@ -183,6 +183,7 @@ export async function getStockItems(
   filters?: StockItemFilters
 ): Promise<StockItemWithDetails[]> {
   const where: Prisma.StockItemWhereInput = {};
+  const itemWhere: Prisma.ItemWhereInput = {};
 
   if (filters?.isActive !== undefined) {
     where.isActive = filters.isActive;
@@ -191,21 +192,23 @@ export async function getStockItems(
   }
 
   if (filters?.category) {
-    where.item = { category: filters.category };
+    itemWhere.category = filters.category;
   }
 
   if (filters?.type) {
-    where.item = { ...where.item, type: filters.type };
+    itemWhere.type = filters.type;
   }
 
   if (filters?.search) {
-    where.item = {
-      ...where.item,
-      OR: [
-        { name: { contains: filters.search, mode: "insensitive" } },
-        { id: { contains: filters.search, mode: "insensitive" } },
-      ],
-    };
+    itemWhere.OR = [
+      { name: { contains: filters.search, mode: "insensitive" } },
+      { id: { contains: filters.search, mode: "insensitive" } },
+    ];
+  }
+
+  // Only set item filter if we have any conditions
+  if (Object.keys(itemWhere).length > 0) {
+    where.item = itemWhere;
   }
 
   if (filters?.lowStockOnly) {
