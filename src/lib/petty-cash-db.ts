@@ -426,6 +426,132 @@ export async function rejectTransaction(
 }
 
 // ============================================
+// Edit Transaction Functions
+// ============================================
+
+export async function editTransaction(data: {
+  transactionId: string;
+  amount: number;
+  description?: string;
+  reference?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+  editedBy: string;
+}): Promise<PettyCashTransactionWithAccount> {
+  const transaction = await prisma.$transaction(async (tx) => {
+    // Get the existing transaction
+    const existingTx = await tx.pettyCashTransaction.findUnique({
+      where: { id: data.transactionId },
+    });
+
+    if (!existingTx) {
+      throw new Error("Transaction not found");
+    }
+
+    // If the transaction was APPROVED, we need to reverse the balance change first
+    if (existingTx.status === PettyCashStatus.APPROVED) {
+      // Reverse the previous balance change
+      const previousBalanceChange =
+        existingTx.type === PettyCashType.WITHDRAW ||
+        existingTx.type === PettyCashType.TRANSFER_OUT
+          ? Number(existingTx.amount) // Add back what was withdrawn
+          : -Number(existingTx.amount); // Remove what was added
+
+      await tx.pettyCashAccount.update({
+        where: { id: existingTx.accountId },
+        data: {
+          balance: {
+            increment: previousBalanceChange,
+          },
+        },
+      });
+    }
+
+    // Update the transaction
+    const updatedTx = await tx.pettyCashTransaction.update({
+      where: { id: data.transactionId },
+      data: {
+        amount: data.amount,
+        description: data.description,
+        reference: data.reference,
+        attachmentUrl: data.attachmentUrl,
+        attachmentName: data.attachmentName,
+        // Reset to PENDING if it was APPROVED (needs re-approval)
+        status:
+          existingTx.status === PettyCashStatus.APPROVED
+            ? PettyCashStatus.PENDING
+            : existingTx.status,
+        // Clear approval info if it was approved
+        approvedBy:
+          existingTx.status === PettyCashStatus.APPROVED ? null : existingTx.approvedBy,
+        approvedAt:
+          existingTx.status === PettyCashStatus.APPROVED ? null : existingTx.approvedAt,
+      },
+      include: {
+        account: {
+          select: {
+            balance: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return updatedTx;
+  });
+
+  return {
+    ...transaction,
+    amount: Number(transaction.amount),
+    account: {
+      ...transaction.account,
+      balance: Number(transaction.account.balance),
+    },
+  };
+}
+
+export async function getTransactionById(
+  transactionId: string
+): Promise<PettyCashTransactionWithAccount | null> {
+  const transaction = await prisma.pettyCashTransaction.findUnique({
+    where: { id: transactionId },
+    include: {
+      account: {
+        select: {
+          balance: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              image: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!transaction) return null;
+
+  return {
+    ...transaction,
+    amount: Number(transaction.amount),
+    account: {
+      ...transaction.account,
+      balance: Number(transaction.account.balance),
+    },
+  };
+}
+
+// ============================================
 // KPI Functions
 // ============================================
 

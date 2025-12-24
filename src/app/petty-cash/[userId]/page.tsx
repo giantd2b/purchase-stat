@@ -11,16 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { UserDetailClient } from "./UserDetailClient";
+import { TransactionTable } from "./TransactionTable";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("th-TH", {
@@ -28,16 +20,6 @@ function formatCurrency(amount: number): string {
     currency: "THB",
     minimumFractionDigits: 2,
   }).format(amount);
-}
-
-function formatDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }
 
 interface Props {
@@ -119,107 +101,7 @@ export default async function PettyCashUserPage({ params }: Props) {
             <CardTitle>ประวัติรายการ ({transactions.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {transactions.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">ยังไม่มีรายการ</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>วันที่/เวลา</TableHead>
-                    <TableHead>ประเภท</TableHead>
-                    <TableHead>รายละเอียด</TableHead>
-                    <TableHead>เลขที่เอกสาร</TableHead>
-                    <TableHead>ไฟล์แนบ</TableHead>
-                    <TableHead className="text-right">จำนวนเงิน</TableHead>
-                    <TableHead>สถานะ</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell className="text-gray-500">
-                        {formatDateTime(tx.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            tx.type === "WITHDRAW" || tx.type === "TRANSFER_OUT"
-                              ? "bg-red-100 text-red-800"
-                              : tx.type === "RETURN"
-                              ? "bg-blue-100 text-blue-800"
-                              : tx.type === "TRANSFER_IN"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}
-                        >
-                          {tx.type === "WITHDRAW"
-                            ? "เบิก"
-                            : tx.type === "RETURN"
-                            ? "คืน"
-                            : tx.type === "TOPUP"
-                            ? "เติม"
-                            : tx.type === "TRANSFER_OUT"
-                            ? "โอนออก"
-                            : "รับโอน"}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-gray-700">
-                        {tx.description || "-"}
-                      </TableCell>
-                      <TableCell className="text-gray-500">
-                        {tx.reference || "-"}
-                      </TableCell>
-                      <TableCell>
-                        {tx.attachmentUrl ? (
-                          <a
-                            href={tx.attachmentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm"
-                          >
-                            {tx.attachmentName || "ดูไฟล์"}
-                          </a>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right font-semibold ${
-                          tx.type === "WITHDRAW" || tx.type === "TRANSFER_OUT"
-                            ? "text-red-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        {tx.type === "WITHDRAW" || tx.type === "TRANSFER_OUT" ? "-" : "+"}
-                        {formatCurrency(tx.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            tx.status === "APPROVED"
-                              ? "bg-green-100 text-green-800"
-                              : tx.status === "PENDING"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {tx.status === "APPROVED"
-                            ? "อนุมัติ"
-                            : tx.status === "PENDING"
-                            ? "รออนุมัติ"
-                            : "ปฏิเสธ"}
-                        </span>
-                        {tx.status === "REJECTED" && tx.rejectReason && (
-                          <span className="block text-xs text-gray-500 mt-1">
-                            {tx.rejectReason}
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
+            <TransactionTable transactions={transactions} />
           </CardContent>
         </Card>
       </div>

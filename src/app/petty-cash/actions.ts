@@ -9,6 +9,7 @@ import {
   getOrCreatePettyCashAccount,
   createPettyCashAccount,
   transferBetweenAccounts,
+  editTransaction,
 } from "@/lib/petty-cash-db";
 import { PettyCashType } from "@prisma/client";
 
@@ -255,5 +256,38 @@ export async function createBulkWithdrawalAction(
   } catch (error) {
     console.error("Failed to create bulk withdrawal:", error);
     return { error: "Failed to create transactions" };
+  }
+}
+
+export async function editTransactionAction(data: {
+  transactionId: string;
+  amount: number;
+  description?: string;
+  reference?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
+}) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+
+  if (!data.transactionId || !data.amount || data.amount <= 0) {
+    return { error: "Invalid input" };
+  }
+
+  try {
+    const result = await editTransaction({
+      ...data,
+      editedBy: session.user.id,
+    });
+
+    revalidatePath("/petty-cash");
+    revalidatePath("/petty-cash/approvals");
+    return { success: true, wasApproved: result.status === "PENDING" };
+  } catch (error) {
+    console.error("Failed to edit transaction:", error);
+    const message = error instanceof Error ? error.message : "Failed to edit transaction";
+    return { error: message };
   }
 }

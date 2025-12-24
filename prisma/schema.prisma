@@ -32,6 +32,10 @@ model User {
   sessions Session[]
   pettyCashAccount PettyCashAccount?
 
+  // Stock transaction relations
+  stockTransactionsRequested StockTransaction[] @relation("StockTransactionRequester")
+  stockTransactionsApproved  StockTransaction[] @relation("StockTransactionApprover")
+
   @@index([email])
   @@index([role])
 }
@@ -147,6 +151,9 @@ model Item {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Relation to stock management
+  stockItem   StockItem?
+
   @@index([name])
   @@index([category])
   @@index([type])
@@ -224,4 +231,156 @@ model PettyCashTransaction {
   @@index([status])
   @@index([createdAt])
   @@index([type])
+}
+
+// ============================================
+// Inventory/Stock Management Models
+// ============================================
+
+enum StockTransactionType {
+  RECEIVE       // นำเข้าสินค้า (auto-approve)
+  WITHDRAW      // เบิกจ่ายสินค้า (conditional)
+  ADJUST_IN     // ปรับยอดเพิ่ม (needs approval)
+  ADJUST_OUT    // ปรับยอดลด (needs approval)
+  TRANSFER_OUT  // โอนออก (needs approval)
+  TRANSFER_IN   // รับโอน (auto-approve)
+  RETURN        // คืนสินค้า (auto-approve)
+}
+
+enum StockTransactionStatus {
+  PENDING       // รออนุมัติ
+  APPROVED      // อนุมัติแล้ว
+  REJECTED      // ปฏิเสธ
+}
+
+// Stock Item - extends Item with stock-specific fields
+model StockItem {
+  id              String   @id @default(cuid())
+  itemId          String   @unique  // Link to existing Item table
+  item            Item     @relation(fields: [itemId], references: [id])
+
+  // Stock tracking
+  currentQuantity Decimal  @default(0) @db.Decimal(18, 4)
+  minQuantity     Decimal? @db.Decimal(18, 4)  // Reorder point
+  maxQuantity     Decimal? @db.Decimal(18, 4)  // Max stock level
+
+  // Cost tracking
+  averageCost     Decimal? @db.Decimal(18, 2)  // Weighted average cost
+  lastCost        Decimal? @db.Decimal(18, 2)  // Most recent cost
+
+  // Location (optional)
+  location        String?  // Storage location
+
+  // Status
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  batches         StockBatch[]
+  transactionItems StockTransactionItem[]
+
+  @@index([itemId])
+  @@index([isActive])
+}
+
+// Stock Batch - for tracking expiry dates and FIFO/FEFO
+model StockBatch {
+  id              String    @id @default(cuid())
+  stockItemId     String
+  stockItem       StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+
+  // Batch info
+  batchNumber     String?
+  expiryDate      DateTime?
+  manufactureDate DateTime?
+
+  // Quantity tracking
+  initialQuantity Decimal   @db.Decimal(18, 4)
+  currentQuantity Decimal   @db.Decimal(18, 4)
+
+  // Cost for this batch
+  unitCost        Decimal   @db.Decimal(18, 2)
+
+  // Source reference
+  receiveTransactionId String?  // Link to the transaction that created this batch
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([stockItemId])
+  @@index([expiryDate])
+  @@index([batchNumber])
+}
+
+// Stock Transaction - main transaction record
+model StockTransaction {
+  id              String                  @id @default(cuid())
+  transactionNumber String               @unique  // Auto-generated: STK-YYYYMMDD-XXXX
+  type            StockTransactionType
+  status          StockTransactionStatus  @default(PENDING)
+
+  // Transaction details
+  description     String?
+  reference       String?                 // External reference (PO number, etc.)
+  notes           String?
+
+  // User tracking
+  requestedBy     String                  // User ID who created
+  requestedByUser User                    @relation("StockTransactionRequester", fields: [requestedBy], references: [id])
+  approvedBy      String?                 // User ID who approved/rejected
+  approvedByUser  User?                   @relation("StockTransactionApprover", fields: [approvedBy], references: [id])
+
+  // Timestamps
+  transactionDate DateTime                @default(now())
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectReason    String?
+
+  // For transfers - link to related transaction
+  relatedTransactionId String?
+
+  // Attachment
+  attachmentUrl   String?
+  attachmentName  String?
+
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  // Relations
+  items           StockTransactionItem[]
+
+  @@index([type])
+  @@index([status])
+  @@index([transactionDate])
+  @@index([requestedBy])
+}
+
+// Stock Transaction Item - line items for each transaction
+model StockTransactionItem {
+  id              String           @id @default(cuid())
+  transactionId   String
+  transaction     StockTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  stockItemId     String
+  stockItem       StockItem        @relation(fields: [stockItemId], references: [id])
+
+  // Quantity and cost
+  quantity        Decimal          @db.Decimal(18, 4)
+  unitCost        Decimal?         @db.Decimal(18, 2)
+  totalCost       Decimal?         @db.Decimal(18, 2)
+
+  // For receives - expiry tracking
+  batchNumber     String?
+  expiryDate      DateTime?
+
+  // Withdraw purpose
+  purpose         String?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([transactionId])
+  @@index([stockItemId])
 }
