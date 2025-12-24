@@ -167,11 +167,12 @@ async function generateTransactionNumber(): Promise<string> {
 }
 
 function shouldAutoApprove(type: StockTransactionType): boolean {
-  return [
+  const autoApproveTypes: StockTransactionType[] = [
     StockTransactionType.RECEIVE,
     StockTransactionType.TRANSFER_IN,
     StockTransactionType.RETURN,
-  ].includes(type);
+  ];
+  return autoApproveTypes.includes(type);
 }
 
 // ============================================
@@ -813,13 +814,15 @@ async function applyTransactionToStock(
   type: StockTransactionType,
   items: CreateTransactionItem[]
 ) {
+  const increaseTypes: StockTransactionType[] = [
+    StockTransactionType.RECEIVE,
+    StockTransactionType.ADJUST_IN,
+    StockTransactionType.TRANSFER_IN,
+    StockTransactionType.RETURN,
+  ];
+
   for (const item of items) {
-    const isIncrease = [
-      StockTransactionType.RECEIVE,
-      StockTransactionType.ADJUST_IN,
-      StockTransactionType.TRANSFER_IN,
-      StockTransactionType.RETURN,
-    ].includes(type);
+    const isIncrease = increaseTypes.includes(type);
 
     const quantityChange = isIncrease ? item.quantity : -item.quantity;
 
