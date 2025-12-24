@@ -20,7 +20,7 @@ export default async function InventoryPage() {
 
   const isAdmin = session.user?.role === "ADMIN";
 
-  const [kpis, stockItems, expiringBatches, pendingTransactions, allItems] =
+  const [kpis, stockItems, expiringBatches, pendingTransactions, allItemsRaw] =
     await Promise.all([
       getInventoryKPIs(),
       getStockItems({ isActive: true }),
@@ -28,6 +28,17 @@ export default async function InventoryPage() {
       isAdmin ? getPendingTransactions() : Promise.resolve([]),
       getAllItems(),
     ]);
+
+  // Convert Decimal to number for client component
+  const allItems = allItemsRaw.map((item) => ({
+    ...item,
+    stockItem: item.stockItem
+      ? {
+          id: item.stockItem.id,
+          currentQuantity: Number(item.stockItem.currentQuantity),
+        }
+      : null,
+  }));
 
   return (
     <InventoryClient
