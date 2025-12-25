@@ -44,3 +44,9 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Credentials - NEVER commit
+iris-job-xlsx-*.json
+
+# Generated output
+/output/
