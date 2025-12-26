@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
 
     await browser.close();
 
-    // Return PDF
-    return new NextResponse(pdf, {
+    // Return PDF (convert Uint8Array to Buffer for NextResponse compatibility)
+    return new NextResponse(Buffer.from(pdf), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="petty-cash-report-${date}.pdf"`,
