@@ -177,6 +177,14 @@ function mapRowToRecord(
     taxType: getValue("taxType") || null,
     vatAmount: parseDecimal(getValue("vatAmount")),
     withholdingTax: parseDecimal(getValue("withholdingTax")),
+    // Calculate totalWithVat = totalPrice + vatAmount
+    totalWithVat: (() => {
+      const total = parseDecimal(getValue("totalPrice"));
+      const vat = parseDecimal(getValue("vatAmount"));
+      if (total === null) return null;
+      // Use Decimal.add() for proper decimal arithmetic
+      return vat ? total.add(vat) : total;
+    })(),
     majorGroup: getValue("majorGroup") || null,
     minorGroup: getValue("minorGroup") || null,
     percentage: parseDecimal(getValue("percentage")),
