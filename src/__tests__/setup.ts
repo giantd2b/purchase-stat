@@ -23,6 +23,59 @@ vi.mock("@/lib/db", () => ({
     user: {
       findMany: vi.fn(),
     },
+    // Transaction management models
+    procurementTransaction: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      count: vi.fn(),
+    },
+    transactionOverride: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    manualTransaction: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    // Inventory models
+    stockItem: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      count: vi.fn(),
+    },
+    stockBatch: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    stockTransaction: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      count: vi.fn(),
+    },
+    stockTransactionItem: {
+      create: vi.fn(),
+      createMany: vi.fn(),
+    },
+    item: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
