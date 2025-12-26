@@ -15,9 +15,11 @@ import {
 } from "@/lib/petty-cash-report-db";
 
 export async function updateDailyBalanceAction(formData: FormData) {
-  // TODO: Re-enable auth check after testing
   const session = await auth();
-  const userId = session?.user?.id || "test-user";
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+  const userId = session.user.id;
 
   const dateStr = formData.get("date") as string;
   const openingBalance = parseFloat(formData.get("openingBalance") as string);
@@ -48,9 +50,11 @@ export async function updateTransactionNoteAction(
   transactionId: number,
   note: string
 ) {
-  // TODO: Re-enable auth check after testing
   const session = await auth();
-  const userId = session?.user?.id || "test-user";
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+  const userId = session.user.id;
 
   try {
     if (note.trim()) {
@@ -73,9 +77,11 @@ export async function updateTransactionOverrideAction(
   actualPrice: number | null,
   reason?: string
 ) {
-  // TODO: Re-enable auth check after testing
   const session = await auth();
-  const userId = session?.user?.id || "test-user";
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+  const userId = session.user.id;
 
   try {
     if (actualPrice !== null && actualPrice >= 0) {
@@ -110,7 +116,10 @@ export async function createManualTransactionAction(
   }
 ) {
   const session = await auth();
-  const userId = session?.user?.id || "test-user";
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+  const userId = session.user.id;
 
   try {
     const input: ManualTransactionInput = {
@@ -147,7 +156,10 @@ export async function updateManualTransactionAction(
   }
 ) {
   const session = await auth();
-  const userId = session?.user?.id || "test-user";
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+  const userId = session.user.id;
 
   try {
     const input: Partial<ManualTransactionInput> = {};

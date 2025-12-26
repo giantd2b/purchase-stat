@@ -18,7 +18,10 @@ export async function updateTransactionOverrideAction(
   reason?: string
 ) {
   const session = await auth();
-  const userId = session?.user?.id || "test-user";
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+  const userId = session.user.id;
 
   try {
     if (actualPrice !== null && actualPrice >= 0) {
@@ -47,7 +50,10 @@ export async function createManualTransactionAction(data: {
   note?: string;
 }) {
   const session = await auth();
-  const userId = session?.user?.id || "test-user";
+  if (!session?.user?.id) {
+    return { error: "Unauthorized" };
+  }
+  const userId = session.user.id;
 
   try {
     const input: ManualTransactionInput = {

@@ -88,13 +88,13 @@ describe("updateTransactionOverrideAction", () => {
     expect(result).toEqual({ error: "Failed to update price" });
   });
 
-  it("should use test-user when no session", async () => {
+  it("should return Unauthorized when no session", async () => {
     vi.mocked(auth).mockResolvedValue(null as never);
-    vi.mocked(upsertTransactionOverride).mockResolvedValue(undefined as never);
 
-    await updateTransactionOverrideAction(1, 950);
+    const result = await updateTransactionOverrideAction(1, 950);
 
-    expect(upsertTransactionOverride).toHaveBeenCalledWith(1, 950, "test-user", undefined);
+    expect(result).toEqual({ error: "Unauthorized" });
+    expect(upsertTransactionOverride).not.toHaveBeenCalled();
   });
 });
 
