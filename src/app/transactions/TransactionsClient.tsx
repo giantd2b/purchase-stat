@@ -134,6 +134,40 @@ export function TransactionsClient({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
+                  <div className="flex gap-1 p-2 border-b">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() - 1);
+                        setStartDate(d);
+                      }}
+                    >
+                      เมื่อวาน
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setStartDate(new Date())}
+                    >
+                      วันนี้
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 1);
+                        setStartDate(d);
+                      }}
+                    >
+                      พรุ่งนี้
+                    </Button>
+                  </div>
                   <Calendar
                     mode="single"
                     selected={startDate}
@@ -160,6 +194,40 @@ export function TransactionsClient({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
+                  <div className="flex gap-1 p-2 border-b">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() - 1);
+                        setEndDate(d);
+                      }}
+                    >
+                      เมื่อวาน
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setEndDate(new Date())}
+                    >
+                      วันนี้
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 1);
+                        setEndDate(d);
+                      }}
+                    >
+                      พรุ่งนี้
+                    </Button>
+                  </div>
                   <Calendar
                     mode="single"
                     selected={endDate}
