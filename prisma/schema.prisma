@@ -176,6 +176,7 @@ model ProcurementTransaction {
   taxType         String?   // ประเภทภาษี
   vatAmount       Decimal?  @db.Decimal(18, 2) // ยอด VAT
   withholdingTax  Decimal?  @db.Decimal(18, 2) // หัก ณ ที่จ่าย
+  totalWithVat    Decimal?  @db.Decimal(18, 2) // ยอดรวม VAT (totalPrice + vatAmount)
 
   // Category fields
   majorGroup      String?   // กลุ่มใหญ่
@@ -448,4 +449,82 @@ model StockTransactionItem {
 
   @@index([transactionId])
   @@index([stockItemId])
+}
+
+// ============================================
+// Daily Petty Cash Report Models
+// ============================================
+
+// เก็บยอดเงินสดยกมาแต่ละวัน
+model DailyPettyCashBalance {
+  id             String   @id @default(cuid())
+  date           DateTime @db.Date @unique
+  openingBalance Decimal  @db.Decimal(12, 2)
+  notes          String?
+  createdBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([date])
+}
+
+// เก็บหมายเหตุสำหรับแต่ละ procurement transaction (petty cash)
+model PettyCashTransactionNote {
+  id            String   @id @default(cuid())
+  transactionId Int      @unique  // Links to ProcurementTransaction.id
+  note          String
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([transactionId])
+}
+
+// เก็บยอดจริงที่แก้ไข (เมื่อ Google Sheet มียอดประมาณการ)
+model TransactionOverride {
+  id            String   @id @default(cuid())
+  transactionId Int      @unique  // Links to ProcurementTransaction.id
+  actualPrice   Decimal  @db.Decimal(12, 2)  // ยอดซื้อจริง
+  reason        String?  // เหตุผลที่แก้ไข
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([transactionId])
+}
+
+// รายการเงินสดย่อยที่เพิ่มด้วยมือ (ไม่ได้มาจาก Google Sheet)
+model ManualPettyCashTransaction {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @db.Date
+  reference   String?  // อ้างอิง
+  vendor      String?  // ผู้ขาย
+  productName String?  // รายการ
+  totalPrice  Decimal  @db.Decimal(12, 2)  // จำนวนเงิน
+  minorGroup  String?  // แผนก
+  note        String?  // หมายเหตุ
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+// รายการที่เพิ่มด้วยมือ (ทุกประเภท payment - ไม่ใช่แค่ petty cash)
+model ManualTransaction {
+  id          Int      @id @default(autoincrement())
+  date        DateTime @db.Date
+  reference   String?  // อ้างอิง
+  vendor      String?  // ผู้ขาย
+  productName String?  // รายการ
+  totalPrice  Decimal  @db.Decimal(12, 2)  // จำนวนเงิน
+  payment     String?  // ประเภทการจ่าย (เงินสด, โอน, etc.)
+  minorGroup  String?  // แผนก
+  note        String?  // หมายเหตุ
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+  @@index([payment])
 }

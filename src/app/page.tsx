@@ -7,6 +7,7 @@ import {
   getRecentTransactionsFiltered,
   getTotalRecordCount,
   getLastSyncStatus,
+  getLatestDate,
 } from "@/lib/db";
 import Dashboard from "@/components/Dashboard";
 import SyncButton from "@/components/SyncButton";
@@ -14,7 +15,7 @@ import SyncItemsButton from "@/components/SyncItemsButton";
 import { UserNav } from "@/components/UserNav";
 import { DashboardDatePicker } from "@/components/DashboardDatePicker";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertCircle, Database, FileText, Wallet, Package } from "lucide-react";
+import { RefreshCw, AlertCircle, Database, FileText, Wallet, Package, Receipt, ShoppingCart } from "lucide-react";
 import { revalidatePath } from "next/cache";
 import Link from "next/link";
 
@@ -78,13 +79,19 @@ async function refreshData() {
 export default async function HomePage({ searchParams }: PageProps) {
   const params = await searchParams;
 
-  // Default to Year to Date (January 1 of current year to today)
+  // Default to Year to Date (January 1 of current year to latest data)
+  // Use Thailand timezone (UTC+7) to get correct "today"
   const now = new Date();
-  const yearStart = `${now.getFullYear()}-01-01`;
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const bangkokTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+  const yearStart = `${bangkokTime.getFullYear()}-01-01`;
+  const todayStr = `${bangkokTime.getFullYear()}-${String(bangkokTime.getMonth() + 1).padStart(2, '0')}-${String(bangkokTime.getDate()).padStart(2, '0')}`;
+
+  // Get latest date from database to include all available data
+  const latestDbDate = await getLatestDate();
+  const defaultEndDate = latestDbDate && latestDbDate > todayStr ? latestDbDate : todayStr;
 
   const startStr = params.start || yearStart;
-  const endStr = params.end || todayStr;
+  const endStr = params.end || defaultEndDate;
 
   const startDate = new Date(startStr);
   startDate.setHours(0, 0, 0, 0);
@@ -165,10 +172,22 @@ export default async function HomePage({ searchParams }: PageProps) {
                     Petty Cash
                   </Button>
                 </Link>
+                <Link href="/petty-cash-report">
+                  <Button variant="outline" size="sm">
+                    <Receipt className="h-4 w-4 mr-2" />
+                    PC Report
+                  </Button>
+                </Link>
                 <Link href="/inventory">
                   <Button variant="outline" size="sm">
                     <Package className="h-4 w-4 mr-2" />
                     Inventory
+                  </Button>
+                </Link>
+                <Link href="/transactions">
+                  <Button variant="outline" size="sm">
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Transactions
                   </Button>
                 </Link>
                 <SyncItemsButton />
@@ -220,6 +239,10 @@ export default async function HomePage({ searchParams }: PageProps) {
             {" • "}
             <Link href="/petty-cash" className="text-blue-500 hover:underline">
               Petty Cash
+            </Link>
+            {" • "}
+            <Link href="/petty-cash-report" className="text-blue-500 hover:underline">
+              PC Report
             </Link>
             {" • "}
             <Link href="/inventory" className="text-blue-500 hover:underline">
