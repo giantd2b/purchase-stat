@@ -90,7 +90,7 @@ export default async function PettyCashReportPage({ searchParams }: PageProps) {
         <PettyCashReportClient
           initialDate={dateStr}
           summary={summary!}
-          dailyBalance={dailyBalance}
+          dailyBalance={dailyBalance ?? null}
           departments={departments}
         />
       </main>
