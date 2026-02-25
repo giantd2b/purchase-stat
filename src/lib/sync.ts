@@ -229,8 +229,15 @@ export async function syncGoogleSheetsToDatabase(): Promise<{
 
     console.log("Header indices:", headerIndices);
 
-    // Get existing row hashes from database
+    // Compute cutoff date: 2 months ago from today
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - 2);
+    cutoffDate.setUTCHours(0, 0, 0, 0);
+    console.log(`Sync window: only processing rows from ${cutoffDate.toISOString().split('T')[0]} onwards`);
+
+    // Get existing row hashes from database (only within sync window)
     const existingRows = await prisma.procurementTransaction.findMany({
+      where: { date: { gte: cutoffDate } },
       select: { rowNumber: true, rowHash: true },
     });
     const existingHashMap = new Map(
@@ -239,10 +246,12 @@ export async function syncGoogleSheetsToDatabase(): Promise<{
 
     let insertedRows = 0;
     let updatedRows = 0;
+    let skippedRows = 0;
     const processedRowNumbers = new Set<number>();
 
     // Process rows in batches
     const BATCH_SIZE = 1000;
+    const dateColIndex = headerIndices["date"];
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
       const operations: Promise<unknown>[] = [];
@@ -250,12 +259,23 @@ export async function syncGoogleSheetsToDatabase(): Promise<{
       for (let j = 0; j < batch.length; j++) {
         const row = batch[j];
         const rowNumber = i + j + 2; // +2 because row 1 is header, and we're 1-indexed
-        processedRowNumbers.add(rowNumber);
 
         // Skip empty rows
         if (!row || row.length === 0 || row.every((cell) => !cell)) {
           continue;
         }
+
+        // Parse date to check if within sync window
+        const dateStr = dateColIndex !== undefined && dateColIndex < row.length ? row[dateColIndex] : undefined;
+        const rowDate = parseDate(dateStr);
+
+        // Skip rows outside the 2-month window (include rows with null/unparseable dates to be safe)
+        if (rowDate && rowDate < cutoffDate) {
+          skippedRows++;
+          continue;
+        }
+
+        processedRowNumbers.add(rowNumber);
 
         const rowHash = computeRowHash(row);
         const existingHash = existingHashMap.get(rowNumber);
@@ -304,13 +324,16 @@ export async function syncGoogleSheetsToDatabase(): Promise<{
       console.log(`Deleted ${deletedRows} rows that no longer exist in sheet`);
     }
 
+    const processedCount = processedRowNumbers.size;
+    console.log(`Skipped ${skippedRows} rows outside 2-month window, processed ${processedCount} rows`);
+
     // Update sync log
     await prisma.syncLog.update({
       where: { id: syncLog.id },
       data: {
         status: "completed",
         completedAt: new Date(),
-        totalRows: rows.length,
+        totalRows: processedCount,
         insertedRows,
         updatedRows,
         deletedRows,
@@ -320,7 +343,7 @@ export async function syncGoogleSheetsToDatabase(): Promise<{
     console.log(`Sync completed: ${insertedRows} inserted, ${updatedRows} updated, ${deletedRows} deleted`);
 
     return {
-      totalRows: rows.length,
+      totalRows: processedCount,
       insertedRows,
       updatedRows,
       deletedRows,
