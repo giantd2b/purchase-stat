@@ -341,73 +341,42 @@ export async function getTopItemsFiltered(startDate: Date, endDate: Date, limit:
  * Get monthly spending trend
  */
 export async function getMonthlySpend(): Promise<MonthlySpend[]> {
-  // Get all transactions with dates
-  const transactions = await prisma.procurementTransaction.findMany({
-    where: { date: { not: null } },
-    select: {
-      date: true,
-      totalWithVat: true,
-    },
-  });
+  const results = await prisma.$queryRaw<{ month: string; spend: number; count: bigint }[]>`
+    SELECT to_char(date, 'YYYY-MM') as month,
+           COALESCE(SUM("totalWithVat"), 0)::float as spend,
+           COUNT(*)::bigint as count
+    FROM "ProcurementTransaction"
+    WHERE date IS NOT NULL
+    GROUP BY to_char(date, 'YYYY-MM')
+    ORDER BY month
+  `;
 
-  // Group by month
-  const monthlyMap = new Map<string, { spend: number; count: number }>();
-
-  for (const tx of transactions) {
-    if (!tx.date) continue;
-
-    const month = `${tx.date.getFullYear()}-${String(tx.date.getMonth() + 1).padStart(2, "0")}`;
-
-    const existing = monthlyMap.get(month) || { spend: 0, count: 0 };
-    monthlyMap.set(month, {
-      spend: existing.spend + (tx.totalWithVat?.toNumber() || 0),
-      count: existing.count + 1,
-    });
-  }
-
-  // Convert to array and sort
-  return Array.from(monthlyMap.entries())
-    .map(([month, data]) => ({
-      month,
-      spend: data.spend,
-      count: data.count,
-    }))
-    .sort((a, b) => a.month.localeCompare(b.month));
+  return results.map(r => ({
+    month: r.month,
+    spend: r.spend,
+    count: Number(r.count),
+  }));
 }
 
 /**
  * Get monthly spending trend filtered by date range
  */
 export async function getMonthlySpendFiltered(startDate: Date, endDate: Date): Promise<MonthlySpend[]> {
-  const transactions = await prisma.procurementTransaction.findMany({
-    where: { date: { gte: startDate, lte: endDate } },
-    select: {
-      date: true,
-      totalWithVat: true,
-    },
-  });
+  const results = await prisma.$queryRaw<{ month: string; spend: number; count: bigint }[]>`
+    SELECT to_char(date, 'YYYY-MM') as month,
+           COALESCE(SUM("totalWithVat"), 0)::float as spend,
+           COUNT(*)::bigint as count
+    FROM "ProcurementTransaction"
+    WHERE date >= ${startDate} AND date <= ${endDate}
+    GROUP BY to_char(date, 'YYYY-MM')
+    ORDER BY month
+  `;
 
-  const monthlyMap = new Map<string, { spend: number; count: number }>();
-
-  for (const tx of transactions) {
-    if (!tx.date) continue;
-
-    const month = `${tx.date.getFullYear()}-${String(tx.date.getMonth() + 1).padStart(2, "0")}`;
-
-    const existing = monthlyMap.get(month) || { spend: 0, count: 0 };
-    monthlyMap.set(month, {
-      spend: existing.spend + (tx.totalWithVat?.toNumber() || 0),
-      count: existing.count + 1,
-    });
-  }
-
-  return Array.from(monthlyMap.entries())
-    .map(([month, data]) => ({
-      month,
-      spend: data.spend,
-      count: data.count,
-    }))
-    .sort((a, b) => a.month.localeCompare(b.month));
+  return results.map(r => ({
+    month: r.month,
+    spend: r.spend,
+    count: Number(r.count),
+  }));
 }
 
 /**
