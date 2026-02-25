@@ -97,7 +97,7 @@ export interface ReferenceSpend {
 export async function getKPIs(): Promise<KPIData> {
   // Total spend and count
   const totals = await prisma.procurementTransaction.aggregate({
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
   });
 
@@ -119,8 +119,8 @@ export async function getKPIs(): Promise<KPIData> {
   const topVendorResult = await prisma.procurementTransaction.groupBy({
     by: ["vendor"],
     where: { vendor: { not: null } },
-    _sum: { totalPrice: true },
-    orderBy: { _sum: { totalPrice: "desc" } },
+    _sum: { totalWithVat: true },
+    orderBy: { _sum: { totalWithVat: "desc" } },
     take: 1,
   });
 
@@ -128,12 +128,12 @@ export async function getKPIs(): Promise<KPIData> {
   const topDeptResult = await prisma.procurementTransaction.groupBy({
     by: ["minorGroup"],
     where: { minorGroup: { not: null } },
-    _sum: { totalPrice: true },
-    orderBy: { _sum: { totalPrice: "desc" } },
+    _sum: { totalWithVat: true },
+    orderBy: { _sum: { totalWithVat: "desc" } },
     take: 1,
   });
 
-  const totalSpend = totals._sum.totalPrice?.toNumber() || 0;
+  const totalSpend = totals._sum.totalWithVat?.toNumber() || 0;
   const totalTransactions = totals._count;
 
   return {
@@ -143,11 +143,11 @@ export async function getKPIs(): Promise<KPIData> {
     uniqueDepartments: departments.length,
     topDepartment: {
       name: topDeptResult[0]?.minorGroup || "N/A",
-      spend: topDeptResult[0]?._sum.totalPrice?.toNumber() || 0,
+      spend: topDeptResult[0]?._sum.totalWithVat?.toNumber() || 0,
     },
     topVendor: {
       name: topVendorResult[0]?.vendor || "N/A",
-      spend: topVendorResult[0]?._sum.totalPrice?.toNumber() || 0,
+      spend: topVendorResult[0]?._sum.totalWithVat?.toNumber() || 0,
     },
     averageTransactionValue: totalTransactions > 0 ? totalSpend / totalTransactions : 0,
   };
@@ -162,7 +162,7 @@ export async function getKPIsFiltered(startDate: Date, endDate: Date): Promise<K
   // Total spend and count
   const totals = await prisma.procurementTransaction.aggregate({
     where: dateFilter,
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
   });
 
@@ -184,8 +184,8 @@ export async function getKPIsFiltered(startDate: Date, endDate: Date): Promise<K
   const topVendorResult = await prisma.procurementTransaction.groupBy({
     by: ["vendor"],
     where: { ...dateFilter, vendor: { not: null } },
-    _sum: { totalPrice: true },
-    orderBy: { _sum: { totalPrice: "desc" } },
+    _sum: { totalWithVat: true },
+    orderBy: { _sum: { totalWithVat: "desc" } },
     take: 1,
   });
 
@@ -193,12 +193,12 @@ export async function getKPIsFiltered(startDate: Date, endDate: Date): Promise<K
   const topDeptResult = await prisma.procurementTransaction.groupBy({
     by: ["minorGroup"],
     where: { ...dateFilter, minorGroup: { not: null } },
-    _sum: { totalPrice: true },
-    orderBy: { _sum: { totalPrice: "desc" } },
+    _sum: { totalWithVat: true },
+    orderBy: { _sum: { totalWithVat: "desc" } },
     take: 1,
   });
 
-  const totalSpend = totals._sum.totalPrice?.toNumber() || 0;
+  const totalSpend = totals._sum.totalWithVat?.toNumber() || 0;
   const totalTransactions = totals._count;
 
   return {
@@ -208,11 +208,11 @@ export async function getKPIsFiltered(startDate: Date, endDate: Date): Promise<K
     uniqueDepartments: departments.length,
     topDepartment: {
       name: topDeptResult[0]?.minorGroup || "N/A",
-      spend: topDeptResult[0]?._sum.totalPrice?.toNumber() || 0,
+      spend: topDeptResult[0]?._sum.totalWithVat?.toNumber() || 0,
     },
     topVendor: {
       name: topVendorResult[0]?.vendor || "N/A",
-      spend: topVendorResult[0]?._sum.totalPrice?.toNumber() || 0,
+      spend: topVendorResult[0]?._sum.totalWithVat?.toNumber() || 0,
     },
     averageTransactionValue: totalTransactions > 0 ? totalSpend / totalTransactions : 0,
   };
@@ -224,14 +224,14 @@ export async function getKPIsFiltered(startDate: Date, endDate: Date): Promise<K
 export async function getDepartmentSpend(): Promise<DepartmentSpend[]> {
   const results = await prisma.procurementTransaction.groupBy({
     by: ["minorGroup"],
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     department: r.minorGroup || "Uncategorized",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -243,14 +243,14 @@ export async function getDepartmentSpendFiltered(startDate: Date, endDate: Date)
   const results = await prisma.procurementTransaction.groupBy({
     by: ["minorGroup"],
     where: { date: { gte: startDate, lte: endDate } },
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     department: r.minorGroup || "Uncategorized",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -262,15 +262,15 @@ export async function getTopVendors(limit: number = 10): Promise<VendorSpend[]> 
   const results = await prisma.procurementTransaction.groupBy({
     by: ["vendor"],
     where: { vendor: { not: null } },
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
     take: limit,
   });
 
   return results.map((r) => ({
     vendor: r.vendor || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -282,15 +282,15 @@ export async function getTopVendorsFiltered(startDate: Date, endDate: Date, limi
   const results = await prisma.procurementTransaction.groupBy({
     by: ["vendor"],
     where: { vendor: { not: null }, date: { gte: startDate, lte: endDate } },
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
     take: limit,
   });
 
   return results.map((r) => ({
     vendor: r.vendor || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -302,15 +302,15 @@ export async function getTopItems(limit: number = 10): Promise<ItemSpend[]> {
   const results = await prisma.procurementTransaction.groupBy({
     by: ["productName"],
     where: { productName: { not: null } },
-    _sum: { totalPrice: true, quantity: true },
+    _sum: { totalWithVat: true, quantity: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
     take: limit,
   });
 
   return results.map((r) => ({
     item: r.productName || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     quantity: r._sum.quantity?.toNumber() || 0,
     count: r._count,
   }));
@@ -323,15 +323,15 @@ export async function getTopItemsFiltered(startDate: Date, endDate: Date, limit:
   const results = await prisma.procurementTransaction.groupBy({
     by: ["productName"],
     where: { productName: { not: null }, date: { gte: startDate, lte: endDate } },
-    _sum: { totalPrice: true, quantity: true },
+    _sum: { totalWithVat: true, quantity: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
     take: limit,
   });
 
   return results.map((r) => ({
     item: r.productName || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     quantity: r._sum.quantity?.toNumber() || 0,
     count: r._count,
   }));
@@ -346,7 +346,7 @@ export async function getMonthlySpend(): Promise<MonthlySpend[]> {
     where: { date: { not: null } },
     select: {
       date: true,
-      totalPrice: true,
+      totalWithVat: true,
     },
   });
 
@@ -360,7 +360,7 @@ export async function getMonthlySpend(): Promise<MonthlySpend[]> {
 
     const existing = monthlyMap.get(month) || { spend: 0, count: 0 };
     monthlyMap.set(month, {
-      spend: existing.spend + (tx.totalPrice?.toNumber() || 0),
+      spend: existing.spend + (tx.totalWithVat?.toNumber() || 0),
       count: existing.count + 1,
     });
   }
@@ -383,7 +383,7 @@ export async function getMonthlySpendFiltered(startDate: Date, endDate: Date): P
     where: { date: { gte: startDate, lte: endDate } },
     select: {
       date: true,
-      totalPrice: true,
+      totalWithVat: true,
     },
   });
 
@@ -396,7 +396,7 @@ export async function getMonthlySpendFiltered(startDate: Date, endDate: Date): P
 
     const existing = monthlyMap.get(month) || { spend: 0, count: 0 };
     monthlyMap.set(month, {
-      spend: existing.spend + (tx.totalPrice?.toNumber() || 0),
+      spend: existing.spend + (tx.totalWithVat?.toNumber() || 0),
       count: existing.count + 1,
     });
   }
@@ -423,7 +423,7 @@ export async function getRecentTransactions(limit: number = 20): Promise<RecentT
       date: true,
       vendor: true,
       productName: true,
-      totalPrice: true,
+      totalWithVat: true,
       minorGroup: true,
     },
   });
@@ -433,7 +433,7 @@ export async function getRecentTransactions(limit: number = 20): Promise<RecentT
     date: r.date ? r.date.toISOString().split("T")[0] : "",
     vendor: r.vendor || "Unknown",
     productName: r.productName || "N/A",
-    totalPrice: r.totalPrice?.toNumber() || 0,
+    totalPrice: r.totalWithVat?.toNumber() || 0,
     minorGroup: r.minorGroup || "Uncategorized",
   }));
 }
@@ -451,7 +451,7 @@ export async function getRecentTransactionsFiltered(startDate: Date, endDate: Da
       date: true,
       vendor: true,
       productName: true,
-      totalPrice: true,
+      totalWithVat: true,
       minorGroup: true,
     },
   });
@@ -461,7 +461,7 @@ export async function getRecentTransactionsFiltered(startDate: Date, endDate: Da
     date: r.date ? r.date.toISOString().split("T")[0] : "",
     vendor: r.vendor || "Unknown",
     productName: r.productName || "N/A",
-    totalPrice: r.totalPrice?.toNumber() || 0,
+    totalPrice: r.totalWithVat?.toNumber() || 0,
     minorGroup: r.minorGroup || "Uncategorized",
   }));
 }
@@ -482,6 +482,18 @@ export async function getTotalRecordCount(): Promise<number> {
   return prisma.procurementTransaction.count();
 }
 
+/**
+ * Get the latest date in the database
+ */
+export async function getLatestDate(): Promise<string | null> {
+  const result = await prisma.procurementTransaction.findFirst({
+    where: { date: { not: null } },
+    orderBy: { date: "desc" },
+    select: { date: true },
+  });
+  return result?.date?.toISOString().split("T")[0] || null;
+}
+
 // ============================================
 // Daily Report Functions
 // ============================================
@@ -493,7 +505,7 @@ export async function getReportKPIs(startDate: Date, endDate: Date): Promise<Rep
   const [totals, vendors, topDept] = await Promise.all([
     prisma.procurementTransaction.aggregate({
       where: { date: { gte: startDate, lte: endDate } },
-      _sum: { totalPrice: true },
+      _sum: { totalWithVat: true },
       _count: true,
     }),
     prisma.procurementTransaction.findMany({
@@ -504,14 +516,14 @@ export async function getReportKPIs(startDate: Date, endDate: Date): Promise<Rep
     prisma.procurementTransaction.groupBy({
       by: ["minorGroup"],
       where: { date: { gte: startDate, lte: endDate }, minorGroup: { not: null } },
-      _sum: { totalPrice: true },
-      orderBy: { _sum: { totalPrice: "desc" } },
+      _sum: { totalWithVat: true },
+      orderBy: { _sum: { totalWithVat: "desc" } },
       take: 1,
     }),
   ]);
 
   return {
-    totalSpend: totals._sum.totalPrice?.toNumber() || 0,
+    totalSpend: totals._sum.totalWithVat?.toNumber() || 0,
     transactionCount: totals._count,
     uniqueVendors: vendors.length,
     topDepartment: topDept[0]?.minorGroup || "N/A",
@@ -525,14 +537,14 @@ export async function getSpendByVendor(startDate: Date, endDate: Date): Promise<
   const results = await prisma.procurementTransaction.groupBy({
     by: ["vendor"],
     where: { date: { gte: startDate, lte: endDate }, vendor: { not: null } },
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     vendor: r.vendor || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -544,14 +556,14 @@ export async function getSpendByPayment(startDate: Date, endDate: Date): Promise
   const results = await prisma.procurementTransaction.groupBy({
     by: ["payment"],
     where: { date: { gte: startDate, lte: endDate }, payment: { not: null } },
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     paymentType: r.payment || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -563,14 +575,14 @@ export async function getSpendByItem(startDate: Date, endDate: Date): Promise<It
   const results = await prisma.procurementTransaction.groupBy({
     by: ["productName"],
     where: { date: { gte: startDate, lte: endDate }, productName: { not: null } },
-    _sum: { totalPrice: true, quantity: true },
+    _sum: { totalWithVat: true, quantity: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     item: r.productName || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     quantity: r._sum.quantity?.toNumber() || 0,
     count: r._count,
   }));
@@ -583,14 +595,14 @@ export async function getSpendByDepartment(startDate: Date, endDate: Date): Prom
   const results = await prisma.procurementTransaction.groupBy({
     by: ["minorGroup"],
     where: { date: { gte: startDate, lte: endDate }, minorGroup: { not: null } },
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     department: r.minorGroup || "Uncategorized",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -685,7 +697,7 @@ export async function getReportKPIsFiltered(
   const [totals, vendors, topDept] = await Promise.all([
     prisma.procurementTransaction.aggregate({
       where,
-      _sum: { totalPrice: true },
+      _sum: { totalWithVat: true },
       _count: true,
     }),
     prisma.procurementTransaction.findMany({
@@ -696,14 +708,14 @@ export async function getReportKPIsFiltered(
     prisma.procurementTransaction.groupBy({
       by: ["minorGroup"],
       where: { ...where, minorGroup: { not: null } },
-      _sum: { totalPrice: true },
-      orderBy: { _sum: { totalPrice: "desc" } },
+      _sum: { totalWithVat: true },
+      orderBy: { _sum: { totalWithVat: "desc" } },
       take: 1,
     }),
   ]);
 
   return {
-    totalSpend: totals._sum.totalPrice?.toNumber() || 0,
+    totalSpend: totals._sum.totalWithVat?.toNumber() || 0,
     transactionCount: totals._count,
     uniqueVendors: vendors.length,
     topDepartment: topDept[0]?.minorGroup || "N/A",
@@ -731,14 +743,14 @@ export async function getSpendByVendorFiltered(
   const results = await prisma.procurementTransaction.groupBy({
     by: ["vendor"],
     where,
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     vendor: r.vendor || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -764,14 +776,14 @@ export async function getSpendByPaymentFiltered(
   const results = await prisma.procurementTransaction.groupBy({
     by: ["payment"],
     where,
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     paymentType: r.payment || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -797,14 +809,14 @@ export async function getSpendByItemFiltered(
   const results = await prisma.procurementTransaction.groupBy({
     by: ["productName"],
     where,
-    _sum: { totalPrice: true, quantity: true },
+    _sum: { totalWithVat: true, quantity: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     item: r.productName || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     quantity: r._sum.quantity?.toNumber() || 0,
     count: r._count,
   }));
@@ -831,14 +843,14 @@ export async function getSpendByDepartmentFiltered(
   const results = await prisma.procurementTransaction.groupBy({
     by: ["minorGroup"],
     where,
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     department: r.minorGroup || "Uncategorized",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
@@ -863,14 +875,14 @@ export async function getSpendByReferenceFiltered(
   const results = await prisma.procurementTransaction.groupBy({
     by: ["reference"],
     where,
-    _sum: { totalPrice: true },
+    _sum: { totalWithVat: true },
     _count: true,
-    orderBy: { _sum: { totalPrice: "desc" } },
+    orderBy: { _sum: { totalWithVat: "desc" } },
   });
 
   return results.map((r) => ({
     reference: r.reference || "Unknown",
-    spend: r._sum.totalPrice?.toNumber() || 0,
+    spend: r._sum.totalWithVat?.toNumber() || 0,
     count: r._count,
   }));
 }
